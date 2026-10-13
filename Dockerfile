@@ -10,5 +10,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY *.py ./
 COPY locales ./locales
+RUN pybabel compile -d locales
 
 CMD ["python", "bot.py"]
