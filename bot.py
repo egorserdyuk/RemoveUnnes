@@ -4,6 +4,8 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 
 import config
 import db
@@ -21,7 +23,12 @@ async def main() -> None:
     logging.getLogger(__name__).info("allowed_updates=%s", ALLOWED_UPDATES)
     pool = await db.init_pool(settings.dsn)
     await db.init_schema(pool)
-    bot = Bot(token=settings.token)
+    if settings.api_base:
+        session = AiohttpSession(api=TelegramAPIServer.from_base(settings.api_base))
+        logging.getLogger(__name__).info("using custom Telegram API server: %s", settings.api_base)
+    else:
+        session = None
+    bot = Bot(token=settings.token, session=session)
     dp = Dispatcher()
     dp["pool"] = pool
     dp.include_routers(
