@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS notify_state (
     chat_id BIGINT PRIMARY KEY,
     notified_at TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE groups ADD COLUMN IF NOT EXISTS notify_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 """
 
 
@@ -161,6 +162,23 @@ async def toggle_blocked(pool: asyncpg.Pool, chat_id: int, ctype: str) -> set[st
                 ctype,
             )
     return await get_blocked(pool, chat_id)
+
+
+async def get_notify(pool: asyncpg.Pool, chat_id: int) -> bool:
+    async with pool.acquire() as conn:
+        return bool(
+            await conn.fetchval("SELECT notify_enabled FROM groups WHERE chat_id = $1", chat_id)
+        )
+
+
+async def toggle_notify(pool: asyncpg.Pool, chat_id: int) -> bool:
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE groups SET notify_enabled = NOT notify_enabled WHERE chat_id = $1"
+            " RETURNING notify_enabled",
+            chat_id,
+        )
+        return bool(row["notify_enabled"]) if row else False
 
 
 async def is_whitelisted(pool: asyncpg.Pool, chat_id: int, user_id: int) -> bool:

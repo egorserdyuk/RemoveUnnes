@@ -5,16 +5,17 @@ from unittest.mock import AsyncMock, patch
 NOTIFY_WINDOW = timedelta(minutes=10)
 
 
-def make_msg(*, text=None, entities=None, photo=None, from_id=111, msg_id=1, chat_id=-1001):
+def make_msg(*, text=None, entities=None, photo=None, voice=None, from_id=111,
+             username="bob", first_name="Bob", msg_id=1, chat_id=-1001):
     return SimpleNamespace(
         message_id=msg_id,
         chat=SimpleNamespace(id=chat_id, type="supergroup", title="G"),
-        from_user=SimpleNamespace(id=from_id) if from_id is not None else None,
+        from_user=SimpleNamespace(id=from_id, username=username, first_name=first_name) if from_id is not None else None,
         sender_chat=None,
         text=text,
         entities=entities,
         photo=photo,
-        video=None, video_note=None, voice=None, audio=None, document=None,
+        video=None, video_note=None, voice=voice, audio=None, document=None,
         animation=None, sticker=None, poll=None, contact=None, location=None,
         venue=None, dice=None, game=None, invoice=None, successful_payment=None,
         checklist=None, story=None,
@@ -34,6 +35,7 @@ async def test_blocked_photo_deleted_and_counted():
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
+        patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()) as incr,
     ):
         await handle_group_message(msg, pool, bot)
@@ -48,6 +50,7 @@ async def test_allowed_type_passes():
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
+        patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()) as incr,
     ):
         await handle_group_message(msg, pool, bot)
@@ -90,8 +93,40 @@ async def test_edited_message_rechecked():
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
+        patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()) as incr,
     ):
         await handle_edited_message(msg, pool, bot)
     bot.delete_message.assert_called_once()
     incr.assert_called_once()
+
+
+async def test_notify_sent_when_enabled():
+    from handlers_group import handle_group_message
+
+    msg, bot, pool = make_msg(voice={"file_id": "v"}), make_bot(), object()
+    with (
+        patch("handlers_group.get_blocked", AsyncMock(return_value={"voice"})),
+        patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
+        patch("handlers_group.incr_stat", AsyncMock()),
+        patch("handlers_group.get_notify", AsyncMock(return_value=True)),
+    ):
+        await handle_group_message(msg, pool, bot)
+    bot.send_message.assert_called_once()
+    args = bot.send_message.call_args[0]
+    assert args[0] == -1001
+    assert "@bob" in args[1] and "voice message" in args[1]
+
+
+async def test_notify_silent_when_disabled():
+    from handlers_group import handle_group_message
+
+    msg, bot, pool = make_msg(voice={"file_id": "v"}), make_bot(), object()
+    with (
+        patch("handlers_group.get_blocked", AsyncMock(return_value={"voice"})),
+        patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
+        patch("handlers_group.incr_stat", AsyncMock()),
+        patch("handlers_group.get_notify", AsyncMock(return_value=False)),
+    ):
+        await handle_group_message(msg, pool, bot)
+    bot.send_message.assert_not_called()

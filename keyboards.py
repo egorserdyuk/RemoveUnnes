@@ -2,9 +2,9 @@
 
 Callback prefixes (exact):
   group:{chat_id}  types:{chat_id}  toggle:{chat_id}:{ctype}
-  white:{chat_id}  unwhite:{chat_id}:{user_id}  stats:{chat_id}
+  white:{chat_id}  pick_users:{chat_id}  unwhite:{chat_id}:{user_id}  stats:{chat_id}
   reset_stats:{chat_id}  reset_group:{chat_id}  reset_group:{chat_id}:confirm
-  back_groups
+  notify:{chat_id}  back_groups
 """
 
 from aiogram.types import (
@@ -26,10 +26,14 @@ def groups_kb(groups: list[tuple[int, str]]) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def group_menu_kb(chat_id: int, n_blocked: int, n_white: int) -> InlineKeyboardMarkup:
+def group_menu_kb(chat_id: int, n_blocked: int, n_white: int, notify_enabled: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=f"Blocked types: {n_blocked}", callback_data=f"types:{chat_id}")
     builder.button(text=f"Whitelist: {n_white} users", callback_data=f"white:{chat_id}")
+    builder.button(
+        text=f"Notifications: {'ON' if notify_enabled else 'OFF'}",
+        callback_data=f"notify:{chat_id}",
+    )
     builder.button(text="Stats", callback_data=f"stats:{chat_id}")
     builder.button(text="Reset stats", callback_data=f"reset_stats:{chat_id}")
     builder.button(text="Remove group data", callback_data=f"reset_group:{chat_id}")

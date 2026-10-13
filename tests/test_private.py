@@ -47,3 +47,26 @@ async def test_toggle_roundtrip_updates_blocked():
         await on_toggle(cb, pool)
     tb.assert_called_once_with(pool, -1001, "photo")
     assert cb.message.edit_text.await_count == 1
+
+
+async def test_notify_toggle_rerenders_menu():
+    from handlers_private import on_notify
+
+    cb = make_callback("notify:-1001", 111)
+    pool = object()
+    with (
+        patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("handlers_private.toggle_notify", AsyncMock(return_value=True)) as tn,
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
+        patch("handlers_private.get_blocked", AsyncMock(return_value=set())),
+        patch("handlers_private.whitelist_count", AsyncMock(return_value=0)),
+        patch("handlers_private.get_notify", AsyncMock(return_value=True)),
+    ):
+        await on_notify(cb, pool)
+    tn.assert_called_once_with(pool, -1001)
+    text = cb.message.edit_text.call_args[0][0]
+    assert "G" in text
+    kb_text = " ".join(
+        b.text for row in cb.message.edit_text.call_args[1]["reply_markup"].inline_keyboard for b in row
+    )
+    assert "Notifications: ON" in kb_text

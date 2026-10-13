@@ -8,12 +8,14 @@ import texts
 from db import (
     format_stats,
     get_blocked,
+    get_notify,
     get_owner,
     get_stats,
     owner_groups,
     reset_group_data,
     reset_stats,
     toggle_blocked,
+    toggle_notify,
     whitelist_count,
 )
 from keyboards import group_menu_kb, groups_kb, types_kb
@@ -79,6 +81,7 @@ async def on_group_selected(cb: CallbackQuery, pool) -> None:
             chat_id,
             n_blocked=len(await get_blocked(pool, chat_id)),
             n_white=await whitelist_count(pool, chat_id),
+            notify_enabled=await get_notify(pool, chat_id),
         ),
     )
     await cb.answer()
@@ -174,5 +177,18 @@ async def render_group_menu(pool, owner_id: int, chat_id: int):
             chat_id,
             n_blocked=len(await get_blocked(pool, chat_id)),
             n_white=await whitelist_count(pool, chat_id),
+            notify_enabled=await get_notify(pool, chat_id),
         ),
     )
+
+
+@router.callback_query(F.data.startswith("notify:"))
+async def on_notify(cb: CallbackQuery, pool) -> None:
+    chat_id = _parse_chat(cb.data)
+    if not await _owner_only(pool, chat_id, cb.from_user.id):
+        await _deny(cb)
+        return
+    await toggle_notify(pool, chat_id)
+    text, kb = await render_group_menu(pool, cb.from_user.id, chat_id)
+    await cb.message.edit_text(text, reply_markup=kb)
+    await cb.answer()

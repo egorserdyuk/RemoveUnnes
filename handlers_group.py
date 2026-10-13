@@ -8,7 +8,8 @@ from aiogram.types import Message
 
 import texts
 from classify import classify, is_command_exempt
-from db import get_blocked, get_owner, incr_stat, is_whitelisted
+from db import get_blocked, get_notify, get_owner, incr_stat, is_whitelisted
+from notices import format_mention, render_notice
 
 router = Router()
 router.message.filter(F.chat.type.in_({"group", "supergroup"}))
@@ -59,6 +60,11 @@ async def _handle(message: Message, pool, bot) -> None:
         )
         return
     await incr_stat(pool, chat_id, ctype)
+    if await get_notify(pool, chat_id):
+        try:
+            await bot.send_message(chat_id, render_notice(format_mention(sender), ctype))
+        except TelegramAPIError:
+            pass
 
 
 @router.message()
