@@ -300,6 +300,46 @@ msgstr ""
 msgid "menace"
 msgstr ""
 
+#: notices.py:16
+msgid "пидорас"
+msgstr ""
+
+#: notices.py:17
+msgid "хуесос"
+msgstr ""
+
+#: notices.py:18
+msgid "чмо"
+msgstr ""
+
+#: notices.py:19
+msgid "ЧМОМ"
+msgstr ""
+
+#: notices.py:20
+msgid "уебок"
+msgstr ""
+
+#: notices.py:21
+msgid "пидр"
+msgstr ""
+
+#: notices.py:22
+msgid "гей"
+msgstr ""
+
+#: notices.py:23
+msgid "гейчик"
+msgstr ""
+
+#: notices.py:24
+msgid "еба"
+msgstr ""
+
+#: notices.py:25
+msgid "блядь"
+msgstr ""
+
 #: notices.py:19
 #, python-brace-format
 msgid "That {insult} {user} tried to send a {type}! Denied."

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-13 11:47-0400\n"
+"POT-Creation-Date: 2026-10-13 10:55-0400\n"
 "PO-Revision-Date: 2026-10-13 10:55-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ru\n"
@@ -18,158 +18,6 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
-
-#: db.py:72
-#, python-brace-format
-msgid "{n} forwarded story"
-msgid_plural "{n} forwarded stories"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:73
-#, python-brace-format
-msgid "{n} photo"
-msgid_plural "{n} photos"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:74
-#, python-brace-format
-msgid "{n} video"
-msgid_plural "{n} videos"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:75
-#, python-brace-format
-msgid "{n} video message"
-msgid_plural "{n} video messages"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:76
-#, python-brace-format
-msgid "{n} voice message"
-msgid_plural "{n} voice messages"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:77
-#, python-brace-format
-msgid "{n} audio file"
-msgid_plural "{n} audio files"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:78
-#, python-brace-format
-msgid "{n} document"
-msgid_plural "{n} documents"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:79
-#, python-brace-format
-msgid "{n} GIF"
-msgid_plural "{n} GIFs"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:80
-#, python-brace-format
-msgid "{n} sticker"
-msgid_plural "{n} stickers"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:81
-#, python-brace-format
-msgid "{n} poll"
-msgid_plural "{n} polls"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:82
-#, python-brace-format
-msgid "{n} contact"
-msgid_plural "{n} contacts"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:83
-#, python-brace-format
-msgid "{n} location"
-msgid_plural "{n} locations"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:84
-#, python-brace-format
-msgid "{n} venue"
-msgid_plural "{n} venues"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:85
-#, python-brace-format
-msgid "{n} dice roll"
-msgid_plural "{n} dice rolls"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:86
-#, python-brace-format
-msgid "{n} game"
-msgid_plural "{n} games"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:87
-#, python-brace-format
-msgid "{n} invoice"
-msgid_plural "{n} invoices"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:88
-#, python-brace-format
-msgid "{n} payment"
-msgid_plural "{n} payments"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:89
-#, python-brace-format
-msgid "{n} checklist"
-msgid_plural "{n} checklists"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-
-#: db.py:90
-#, python-brace-format
-msgid "{n} text message"
-msgid_plural "{n} text messages"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
 
 #: db.py:97
 msgid "nothing removed yet"
@@ -247,14 +95,12 @@ msgstr ""
 "2. Вернитесь сюда и выберите группу, чтобы указать, какие типы сообщений "
 "я удаляю и кто в белом списке.\n"
 "\n"
-"По умолчанию всё разрешено — ничего не удаляется, пока вы не заблокируете"
-" какой-либо тип."
+"По умолчанию всё разрешено — ничего не удаляется, пока вы не заблокируете "
+"какой-либо тип."
 
 #: texts.py:17
 msgid "You have no groups yet. Add me to a group first, then come back here."
-msgstr ""
-"У вас пока нет групп. Сначала добавьте меня в группу, затем вернитесь "
-"сюда."
+msgstr "У вас пока нет групп. Сначала добавьте меня в группу, затем вернитесь сюда."
 
 #: texts.py:21
 msgid "Your groups:"
@@ -307,152 +153,191 @@ msgstr "🌐 Русский"
 
 #: notices.py:8
 msgid "jerk"
-msgstr ""
+msgstr "придурок"
 
 #: notices.py:9
 msgid "rascal"
-msgstr ""
+msgstr "негодяй"
 
 #: notices.py:10
 msgid "sneaky fox"
-msgstr ""
+msgstr "хитрый лис"
 
 #: notices.py:11
 msgid "rebel"
-msgstr ""
+msgstr "бунтарь"
 
 #: notices.py:12
 msgid "wise guy"
-msgstr ""
+msgstr "умник"
 
 #: notices.py:13
 msgid "troublemaker"
-msgstr ""
+msgstr "проказник"
 
 #: notices.py:14
 msgid "smarty-pants"
-msgstr ""
+msgstr "всезнайка"
 
 #: notices.py:15
-#, fuzzy
 msgid "menace"
-msgstr "кто-то"
+msgstr "угроза"
+
+#: notices.py:16
+msgid "пидорас"
+msgstr "пидорас"
+
+#: notices.py:17
+msgid "хуесос"
+msgstr "хуесос"
+
+#: notices.py:18
+msgid "чмо"
+msgstr "чмо"
+
+#: notices.py:19
+msgid "ЧМОМ"
+msgstr "ЧМОМ"
+
+#: notices.py:20
+msgid "уебок"
+msgstr "уебок"
+
+#: notices.py:21
+msgid "пидр"
+msgstr "пидр"
+
+#: notices.py:22
+msgid "гей"
+msgstr "гей"
+
+#: notices.py:23
+msgid "гейчик"
+msgstr "гейчик"
+
+#: notices.py:24
+msgid "еба"
+msgstr "еба"
+
+#: notices.py:25
+msgid "блядь"
+msgstr "блядь"
 
 #: notices.py:19
 #, python-brace-format
 msgid "That {insult} {user} tried to send a {type}! Denied."
-msgstr ""
+msgstr "Этот {insult} {user} попытался отправить {type}! Запрещено."
 
 #: notices.py:20
 #, python-brace-format
 msgid "{user} thought a {type} would sneak past me. Adorable. Deleted."
-msgstr ""
+msgstr "{user} думал, что {type} проскочит мимо меня. Мило. Удалено."
 
 #: notices.py:21
 #, python-brace-format
 msgid "Nice try, {user} — no {type} allowed here."
-msgstr ""
+msgstr "Хорошая попытка, {user} — здесь запрещены {type}."
 
 #: notices.py:22
 #, python-brace-format
 msgid "The {insult} {user} strikes again with a forbidden {type}!"
-msgstr ""
+msgstr "{insult} {user} снова пытается отправить запрещённый {type}!"
 
 #: notices.py:23
 #, python-brace-format
 msgid "{user} tested the {type} filter. The filter won."
-msgstr ""
+msgstr "{user} проверил фильтр на прочность. Фильтр победил."
 
 #: notices.py:24
 #, python-brace-format
 msgid "A wild {type} from {user} appeared! I swept it away."
-msgstr ""
+msgstr "Дикий {type} от {user} появился! Я его смахнул."
 
 #: notices.py:25
 #, python-brace-format
 msgid "{user}, sweetie, {type} are banned here. Gone."
-msgstr ""
+msgstr "{user}, милый(ая), здесь запрещены {type}. Удалено."
 
 #: notices.py:26
 #, python-brace-format
 msgid "Breaking news: {user}'s {type} didn't survive. What a {insult}."
-msgstr ""
+msgstr "Срочные новости: {type} от {user} не выжил. Вот это {insult}."
 
 #: notices.py:30
 msgid "forwarded story"
-msgstr ""
+msgstr "пересланная история"
 
 #: notices.py:31
 msgid "photo"
-msgstr ""
+msgstr "фото"
 
 #: notices.py:32
 msgid "video"
-msgstr ""
+msgstr "видео"
 
 #: notices.py:33
 msgid "video message"
-msgstr ""
+msgstr "видеосообщение"
 
 #: notices.py:34
 msgid "voice message"
-msgstr ""
+msgstr "голосовое сообщение"
 
 #: notices.py:35
 msgid "audio file"
-msgstr ""
+msgstr "аудиофайл"
 
 #: notices.py:36
 msgid "file"
-msgstr ""
+msgstr "файл"
 
 #: notices.py:37
 msgid "GIF"
-msgstr ""
+msgstr "GIF"
 
 #: notices.py:38
 msgid "sticker"
-msgstr ""
+msgstr "стикер"
 
 #: notices.py:39
 msgid "poll"
-msgstr ""
+msgstr "опрос"
 
 #: notices.py:40
 msgid "contact"
-msgstr ""
+msgstr "контакт"
 
 #: notices.py:41
 msgid "location"
-msgstr ""
+msgstr "местоположение"
 
 #: notices.py:42
 msgid "venue"
-msgstr ""
+msgstr "место проведения"
 
 #: notices.py:43
 msgid "dice roll"
-msgstr ""
+msgstr "бросок кубиков"
 
 #: notices.py:44
 msgid "game"
-msgstr ""
+msgstr "игра"
 
 #: notices.py:45
 msgid "invoice"
-msgstr ""
+msgstr "счёт"
 
 #: notices.py:46
 msgid "payment"
-msgstr ""
+msgstr "платёж"
 
 #: notices.py:47
 msgid "checklist"
-msgstr ""
+msgstr "чек-лист"
 
 #: notices.py:48
 msgid "text message"
-msgstr ""
+msgstr "текстовое сообщение"
 
 #: notices.py:62 notices.py:66
 msgid "someone"
@@ -511,3 +396,154 @@ msgstr[0] "Добавлен {n} пользователь в белый спис�
 msgstr[1] "Добавлено {n} пользователя в белый список."
 msgstr[2] "Добавлено {n} пользователей в белый список."
 
+#: db.py:72
+#, python-brace-format
+msgid "{n} forwarded story"
+msgid_plural "{n} forwarded stories"
+msgstr[0] "{n} пересланная история"
+msgstr[1] "{n} пересланных истории"
+msgstr[2] "{n} пересланных историй"
+
+#: db.py:73
+#, python-brace-format
+msgid "{n} photo"
+msgid_plural "{n} photos"
+msgstr[0] "{n} фото"
+msgstr[1] "{n} фото"
+msgstr[2] "{n} фото"
+
+#: db.py:74
+#, python-brace-format
+msgid "{n} video"
+msgid_plural "{n} videos"
+msgstr[0] "{n} видео"
+msgstr[1] "{n} видео"
+msgstr[2] "{n} видео"
+
+#: db.py:75
+#, python-brace-format
+msgid "{n} video message"
+msgid_plural "{n} video messages"
+msgstr[0] "{n} видеосообщение"
+msgstr[1] "{n} видеосообщения"
+msgstr[2] "{n} видеосообщений"
+
+#: db.py:76
+#, python-brace-format
+msgid "{n} voice message"
+msgid_plural "{n} voice messages"
+msgstr[0] "{n} голосовое сообщение"
+msgstr[1] "{n} голосовых сообщения"
+msgstr[2] "{n} голосовых сообщений"
+
+#: db.py:77
+#, python-brace-format
+msgid "{n} audio file"
+msgid_plural "{n} audio files"
+msgstr[0] "{n} аудиофайл"
+msgstr[1] "{n} аудиофайла"
+msgstr[2] "{n} аудиофайлов"
+
+#: db.py:78
+#, python-brace-format
+msgid "{n} document"
+msgid_plural "{n} documents"
+msgstr[0] "{n} документ"
+msgstr[1] "{n} документа"
+msgstr[2] "{n} документов"
+
+#: db.py:79
+#, python-brace-format
+msgid "{n} GIF"
+msgid_plural "{n} GIFs"
+msgstr[0] "{n} GIF"
+msgstr[1] "{n} GIF"
+msgstr[2] "{n} GIF"
+
+#: db.py:80
+#, python-brace-format
+msgid "{n} sticker"
+msgid_plural "{n} stickers"
+msgstr[0] "{n} стикер"
+msgstr[1] "{n} стикера"
+msgstr[2] "{n} стикеров"
+
+#: db.py:81
+#, python-brace-format
+msgid "{n} poll"
+msgid_plural "{n} polls"
+msgstr[0] "{n} опрос"
+msgstr[1] "{n} опроса"
+msgstr[2] "{n} опросов"
+
+#: db.py:82
+#, python-brace-format
+msgid "{n} contact"
+msgid_plural "{n} contacts"
+msgstr[0] "{n} контакт"
+msgstr[1] "{n} контакта"
+msgstr[2] "{n} контактов"
+
+#: db.py:83
+#, python-brace-format
+msgid "{n} location"
+msgid_plural "{n} locations"
+msgstr[0] "{n} местоположение"
+msgstr[1] "{n} местоположения"
+msgstr[2] "{n} местоположений"
+
+#: db.py:84
+#, python-brace-format
+msgid "{n} venue"
+msgid_plural "{n} venues"
+msgstr[0] "{n} место проведения"
+msgstr[1] "{n} места проведения"
+msgstr[2] "{n} мест проведения"
+
+#: db.py:85
+#, python-brace-format
+msgid "{n} dice roll"
+msgid_plural "{n} dice rolls"
+msgstr[0] "{n} бросок кубиков"
+msgstr[1] "{n} броска кубиков"
+msgstr[2] "{n} бросков кубиков"
+
+#: db.py:86
+#, python-brace-format
+msgid "{n} game"
+msgid_plural "{n} games"
+msgstr[0] "{n} игра"
+msgstr[1] "{n} игры"
+msgstr[2] "{n} игр"
+
+#: db.py:87
+#, python-brace-format
+msgid "{n} invoice"
+msgid_plural "{n} invoices"
+msgstr[0] "{n} счёт"
+msgstr[1] "{n} счёта"
+msgstr[2] "{n} счетов"
+
+#: db.py:88
+#, python-brace-format
+msgid "{n} payment"
+msgid_plural "{n} payments"
+msgstr[0] "{n} платёж"
+msgstr[1] "{n} платежа"
+msgstr[2] "{n} платежей"
+
+#: db.py:89
+#, python-brace-format
+msgid "{n} checklist"
+msgid_plural "{n} checklists"
+msgstr[0] "{n} чек-лист"
+msgstr[1] "{n} чек-листа"
+msgstr[2] "{n} чек-листов"
+
+#: db.py:90
+#, python-brace-format
+msgid "{n} text message"
+msgid_plural "{n} text messages"
+msgstr[0] "{n} текстовое сообщение"
+msgstr[1] "{n} текстовых сообщения"
+msgstr[2] "{n} текстовых сообщений"

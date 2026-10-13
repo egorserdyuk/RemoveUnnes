@@ -13,6 +13,16 @@ INSULTS: list[str] = [
     msgid("troublemaker"),
     msgid("smarty-pants"),
     msgid("menace"),
+    msgid("пидорас"),
+    msgid("хуесос"),
+    msgid("чмо"),
+    msgid("ЧМОМ"),
+    msgid("уебок"),
+    msgid("пидр"),
+    msgid("гей"),
+    msgid("гейчик"),
+    msgid("еба"),
+    msgid("блядь"),
 ]
 
 NOTICE_TEMPLATES: list[str] = [
