@@ -44,7 +44,8 @@ placeholders (the bot falls back to English).
 Workflow after changing user-visible strings:
 
 ```bash
-.venv/bin/pybabel extract -F babel.cfg --keyword=_ --keyword=n:1,2 \
+.venv/bin/pybabel extract -F babel.cfg \
+  --keyword=_ --keyword=n:1,2 --keyword=msgid:1 --keyword=msgid_plural:1,2 \
   -o locales/messages.pot bot.py config.py db.py classify.py keyboards.py \
   texts.py notices.py handlers_private.py handlers_group.py \
   handlers_membership.py handlers_whitelist.py i18n.py

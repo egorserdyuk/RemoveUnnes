@@ -66,28 +66,28 @@ def should_delete(
     return ctype in blocked
 
 
-from i18n import _, n
+from i18n import _, msgid_plural, n
 
 STAT_FORMS: dict[str, tuple[str, str]] = {
-    "story_forward": ("{n} forwarded story", "{n} forwarded stories"),
-    "photo": ("{n} photo", "{n} photos"),
-    "video": ("{n} video", "{n} videos"),
-    "video_note": ("{n} video message", "{n} video messages"),
-    "voice": ("{n} voice message", "{n} voice messages"),
-    "audio": ("{n} audio file", "{n} audio files"),
-    "document": ("{n} document", "{n} documents"),
-    "animation": ("{n} GIF", "{n} GIFs"),
-    "sticker": ("{n} sticker", "{n} stickers"),
-    "poll": ("{n} poll", "{n} polls"),
-    "contact": ("{n} contact", "{n} contacts"),
-    "location": ("{n} location", "{n} locations"),
-    "venue": ("{n} venue", "{n} venues"),
-    "dice": ("{n} dice roll", "{n} dice rolls"),
-    "game": ("{n} game", "{n} games"),
-    "invoice": ("{n} invoice", "{n} invoices"),
-    "successful_payment": ("{n} payment", "{n} payments"),
-    "checklist": ("{n} checklist", "{n} checklists"),
-    "text": ("{n} text message", "{n} text messages"),
+    "story_forward": msgid_plural("{n} forwarded story", "{n} forwarded stories"),
+    "photo": msgid_plural("{n} photo", "{n} photos"),
+    "video": msgid_plural("{n} video", "{n} videos"),
+    "video_note": msgid_plural("{n} video message", "{n} video messages"),
+    "voice": msgid_plural("{n} voice message", "{n} voice messages"),
+    "audio": msgid_plural("{n} audio file", "{n} audio files"),
+    "document": msgid_plural("{n} document", "{n} documents"),
+    "animation": msgid_plural("{n} GIF", "{n} GIFs"),
+    "sticker": msgid_plural("{n} sticker", "{n} stickers"),
+    "poll": msgid_plural("{n} poll", "{n} polls"),
+    "contact": msgid_plural("{n} contact", "{n} contacts"),
+    "location": msgid_plural("{n} location", "{n} locations"),
+    "venue": msgid_plural("{n} venue", "{n} venues"),
+    "dice": msgid_plural("{n} dice roll", "{n} dice rolls"),
+    "game": msgid_plural("{n} game", "{n} games"),
+    "invoice": msgid_plural("{n} invoice", "{n} invoices"),
+    "successful_payment": msgid_plural("{n} payment", "{n} payments"),
+    "checklist": msgid_plural("{n} checklist", "{n} checklists"),
+    "text": msgid_plural("{n} text message", "{n} text messages"),
 }
 
 

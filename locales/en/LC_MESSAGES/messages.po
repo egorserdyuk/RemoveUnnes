@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-13 10:55-0400\n"
+"POT-Creation-Date: 2026-10-13 11:47-0400\n"
 "PO-Revision-Date: 2026-10-13 10:55-0400\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -17,6 +17,139 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
+
+#: db.py:72
+#, python-brace-format
+msgid "{n} forwarded story"
+msgid_plural "{n} forwarded stories"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:73
+#, python-brace-format
+msgid "{n} photo"
+msgid_plural "{n} photos"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:74
+#, python-brace-format
+msgid "{n} video"
+msgid_plural "{n} videos"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:75
+#, python-brace-format
+msgid "{n} video message"
+msgid_plural "{n} video messages"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:76
+#, python-brace-format
+msgid "{n} voice message"
+msgid_plural "{n} voice messages"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:77
+#, python-brace-format
+msgid "{n} audio file"
+msgid_plural "{n} audio files"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:78
+#, python-brace-format
+msgid "{n} document"
+msgid_plural "{n} documents"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:79
+#, python-brace-format
+msgid "{n} GIF"
+msgid_plural "{n} GIFs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:80
+#, python-brace-format
+msgid "{n} sticker"
+msgid_plural "{n} stickers"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:81
+#, python-brace-format
+msgid "{n} poll"
+msgid_plural "{n} polls"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:82
+#, python-brace-format
+msgid "{n} contact"
+msgid_plural "{n} contacts"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:83
+#, python-brace-format
+msgid "{n} location"
+msgid_plural "{n} locations"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:84
+#, python-brace-format
+msgid "{n} venue"
+msgid_plural "{n} venues"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:85
+#, python-brace-format
+msgid "{n} dice roll"
+msgid_plural "{n} dice rolls"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:86
+#, python-brace-format
+msgid "{n} game"
+msgid_plural "{n} games"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:87
+#, python-brace-format
+msgid "{n} invoice"
+msgid_plural "{n} invoices"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:88
+#, python-brace-format
+msgid "{n} payment"
+msgid_plural "{n} payments"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:89
+#, python-brace-format
+msgid "{n} checklist"
+msgid_plural "{n} checklists"
+msgstr[0] ""
+msgstr[1] ""
+
+#: db.py:90
+#, python-brace-format
+msgid "{n} text message"
+msgid_plural "{n} text messages"
+msgstr[0] ""
+msgstr[1] ""
 
 #: db.py:97
 msgid "nothing removed yet"
@@ -63,7 +196,7 @@ msgstr ""
 msgid "« My groups"
 msgstr ""
 
-#: keyboards.py:60 keyboards.py:71
+#: keyboards.py:60 keyboards.py:71 keyboards.py:78
 msgid "« Back"
 msgstr ""
 
@@ -71,7 +204,7 @@ msgstr ""
 msgid "+ Add via picker"
 msgstr ""
 
-#: keyboards.py:79
+#: keyboards.py:86
 msgid "Pick users"
 msgstr ""
 
@@ -133,6 +266,154 @@ msgstr ""
 
 #: texts.py:59
 msgid "🌐 Русский"
+msgstr ""
+
+#: notices.py:8
+msgid "jerk"
+msgstr ""
+
+#: notices.py:9
+msgid "rascal"
+msgstr ""
+
+#: notices.py:10
+msgid "sneaky fox"
+msgstr ""
+
+#: notices.py:11
+msgid "rebel"
+msgstr ""
+
+#: notices.py:12
+msgid "wise guy"
+msgstr ""
+
+#: notices.py:13
+msgid "troublemaker"
+msgstr ""
+
+#: notices.py:14
+msgid "smarty-pants"
+msgstr ""
+
+#: notices.py:15
+msgid "menace"
+msgstr ""
+
+#: notices.py:19
+#, python-brace-format
+msgid "That {insult} {user} tried to send a {type}! Denied."
+msgstr ""
+
+#: notices.py:20
+#, python-brace-format
+msgid "{user} thought a {type} would sneak past me. Adorable. Deleted."
+msgstr ""
+
+#: notices.py:21
+#, python-brace-format
+msgid "Nice try, {user} — no {type} allowed here."
+msgstr ""
+
+#: notices.py:22
+#, python-brace-format
+msgid "The {insult} {user} strikes again with a forbidden {type}!"
+msgstr ""
+
+#: notices.py:23
+#, python-brace-format
+msgid "{user} tested the {type} filter. The filter won."
+msgstr ""
+
+#: notices.py:24
+#, python-brace-format
+msgid "A wild {type} from {user} appeared! I swept it away."
+msgstr ""
+
+#: notices.py:25
+#, python-brace-format
+msgid "{user}, sweetie, {type} are banned here. Gone."
+msgstr ""
+
+#: notices.py:26
+#, python-brace-format
+msgid "Breaking news: {user}'s {type} didn't survive. What a {insult}."
+msgstr ""
+
+#: notices.py:30
+msgid "forwarded story"
+msgstr ""
+
+#: notices.py:31
+msgid "photo"
+msgstr ""
+
+#: notices.py:32
+msgid "video"
+msgstr ""
+
+#: notices.py:33
+msgid "video message"
+msgstr ""
+
+#: notices.py:34
+msgid "voice message"
+msgstr ""
+
+#: notices.py:35
+msgid "audio file"
+msgstr ""
+
+#: notices.py:36
+msgid "file"
+msgstr ""
+
+#: notices.py:37
+msgid "GIF"
+msgstr ""
+
+#: notices.py:38
+msgid "sticker"
+msgstr ""
+
+#: notices.py:39
+msgid "poll"
+msgstr ""
+
+#: notices.py:40
+msgid "contact"
+msgstr ""
+
+#: notices.py:41
+msgid "location"
+msgstr ""
+
+#: notices.py:42
+msgid "venue"
+msgstr ""
+
+#: notices.py:43
+msgid "dice roll"
+msgstr ""
+
+#: notices.py:44
+msgid "game"
+msgstr ""
+
+#: notices.py:45
+msgid "invoice"
+msgstr ""
+
+#: notices.py:46
+msgid "payment"
+msgstr ""
+
+#: notices.py:47
+msgid "checklist"
+msgstr ""
+
+#: notices.py:48
+msgid "text message"
 msgstr ""
 
 #: notices.py:62 notices.py:66

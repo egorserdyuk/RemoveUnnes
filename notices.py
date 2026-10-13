@@ -2,50 +2,50 @@
 
 import random
 
-from i18n import _
+from i18n import _, msgid
 
 INSULTS: list[str] = [
-    "jerk",
-    "rascal",
-    "sneaky fox",
-    "rebel",
-    "wise guy",
-    "troublemaker",
-    "smarty-pants",
-    "menace",
+    msgid("jerk"),
+    msgid("rascal"),
+    msgid("sneaky fox"),
+    msgid("rebel"),
+    msgid("wise guy"),
+    msgid("troublemaker"),
+    msgid("smarty-pants"),
+    msgid("menace"),
 ]
 
 NOTICE_TEMPLATES: list[str] = [
-    "That {insult} {user} tried to send a {type}! Denied.",
-    "{user} thought a {type} would sneak past me. Adorable. Deleted.",
-    "Nice try, {user} — no {type} allowed here.",
-    "The {insult} {user} strikes again with a forbidden {type}!",
-    "{user} tested the {type} filter. The filter won.",
-    "A wild {type} from {user} appeared! I swept it away.",
-    "{user}, sweetie, {type} are banned here. Gone.",
-    "Breaking news: {user}'s {type} didn't survive. What a {insult}.",
+    msgid("That {insult} {user} tried to send a {type}! Denied."),
+    msgid("{user} thought a {type} would sneak past me. Adorable. Deleted."),
+    msgid("Nice try, {user} — no {type} allowed here."),
+    msgid("The {insult} {user} strikes again with a forbidden {type}!"),
+    msgid("{user} tested the {type} filter. The filter won."),
+    msgid("A wild {type} from {user} appeared! I swept it away."),
+    msgid("{user}, sweetie, {type} are banned here. Gone."),
+    msgid("Breaking news: {user}'s {type} didn't survive. What a {insult}."),
 ]
 
 CONTENT_LABELS: dict[str, str] = {
-    "story_forward": "forwarded story",
-    "photo": "photo",
-    "video": "video",
-    "video_note": "video message",
-    "voice": "voice message",
-    "audio": "audio file",
-    "document": "file",
-    "animation": "GIF",
-    "sticker": "sticker",
-    "poll": "poll",
-    "contact": "contact",
-    "location": "location",
-    "venue": "venue",
-    "dice": "dice roll",
-    "game": "game",
-    "invoice": "invoice",
-    "successful_payment": "payment",
-    "checklist": "checklist",
-    "text": "text message",
+    "story_forward": msgid("forwarded story"),
+    "photo": msgid("photo"),
+    "video": msgid("video"),
+    "video_note": msgid("video message"),
+    "voice": msgid("voice message"),
+    "audio": msgid("audio file"),
+    "document": msgid("file"),
+    "animation": msgid("GIF"),
+    "sticker": msgid("sticker"),
+    "poll": msgid("poll"),
+    "contact": msgid("contact"),
+    "location": msgid("location"),
+    "venue": msgid("venue"),
+    "dice": msgid("dice roll"),
+    "game": msgid("game"),
+    "invoice": msgid("invoice"),
+    "successful_payment": msgid("payment"),
+    "checklist": msgid("checklist"),
+    "text": msgid("text message"),
 }
 
 

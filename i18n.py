@@ -40,6 +40,24 @@ def n(singular: str, plural: str, num: int) -> str:
     return _translations[get_lang()].ngettext(singular, plural, num)
 
 
+def msgid(s: str) -> str:
+    """Identity marker so Babel extracts strings that are translated dynamically.
+
+    Use for English source strings stored in lists/dicts and passed to `_()`
+    via variables at runtime (pybabel only extracts string literals).
+    Returns `s` unchanged.
+    """  # noqa: D401
+    return s
+
+
+def msgid_plural(singular: str, plural: str) -> tuple[str, str]:
+    """Identity marker so Babel extracts (singular, plural) pairs used via `n()`.
+
+    Returns the pair unchanged; pass it to `n()` at runtime.
+    """
+    return singular, plural
+
+
 async def activate_owner_lang(pool, tg_user) -> str:
     """Set request locale from stored owner lang, else Telegram language_code."""
     from db import get_owner_lang
