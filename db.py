@@ -231,3 +231,31 @@ async def reset_group_data(pool: asyncpg.Pool, chat_id: int) -> None:
             await conn.execute("DELETE FROM blocked WHERE chat_id = $1", chat_id)
             await conn.execute("DELETE FROM whitelist WHERE chat_id = $1", chat_id)
             await conn.execute("DELETE FROM stats WHERE chat_id = $1", chat_id)
+
+
+async def add_pending_greeting(pool: asyncpg.Pool, owner_id: int, chat_id: int, title: str) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO pending_greetings (owner_id, chat_id, title) VALUES ($1, $2, $3)"
+            " ON CONFLICT (owner_id, chat_id) DO UPDATE SET title = EXCLUDED.title",
+            owner_id,
+            chat_id,
+            title,
+        )
+
+
+async def list_pending_greetings(pool: asyncpg.Pool, owner_id: int) -> list[tuple[int, str]]:
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT chat_id, title FROM pending_greetings WHERE owner_id = $1", owner_id
+        )
+        return [(r["chat_id"], r["title"]) for r in rows]
+
+
+async def delete_pending_greeting(pool: asyncpg.Pool, owner_id: int, chat_id: int) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM pending_greetings WHERE owner_id = $1 AND chat_id = $2",
+            owner_id,
+            chat_id,
+        )
