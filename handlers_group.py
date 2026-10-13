@@ -8,7 +8,8 @@ from aiogram.types import Message
 
 import texts
 from classify import classify, is_command_exempt
-from db import get_blocked, get_notify, get_owner, incr_stat, is_whitelisted
+from db import get_blocked, get_notify, get_owner, get_owner_lang, incr_stat, is_whitelisted
+from i18n import set_lang
 from notices import format_mention, render_notice
 
 router = Router()
@@ -33,8 +34,9 @@ async def _notify_no_rights(pool, bot, chat_id: int, title: str) -> None:
     owner = await get_owner(pool, chat_id)
     if owner is None:
         return
+    set_lang(await get_owner_lang(pool, owner) or "en")
     try:
-        await bot.send_message(owner, texts.NEED_ADMIN.format(title=title))
+        await bot.send_message(owner, texts.NEED_ADMIN(title=title))
     except TelegramAPIError:
         pass
 
@@ -61,6 +63,9 @@ async def _handle(message: Message, pool, bot) -> None:
         return
     await incr_stat(pool, chat_id, ctype)
     if await get_notify(pool, chat_id):
+        owner = await get_owner(pool, chat_id)
+        lang = await get_owner_lang(pool, owner) if owner is not None else None
+        set_lang(lang or "en")
         try:
             await bot.send_message(chat_id, render_notice(format_mention(sender), ctype))
         except TelegramAPIError:

@@ -7,7 +7,7 @@ from aiogram.exceptions import TelegramForbiddenError
 def make_event(old="left", new="member", inviter=111, chat_id=-1001):
     return SimpleNamespace(
         chat=SimpleNamespace(id=chat_id, title="G"),
-        from_user=SimpleNamespace(id=inviter),
+        from_user=SimpleNamespace(id=inviter, language_code="en"),
         old_chat_member=SimpleNamespace(status=old),
         new_chat_member=SimpleNamespace(status=new, user=SimpleNamespace(id=777)),
     )
@@ -31,7 +31,9 @@ async def test_readd_different_owner_fresh_start():
     bot, pool = make_bot(), object()
     with patch(
         "handlers_membership.register_group", AsyncMock(return_value="fresh_start")
-    ) as rg:
+    ) as rg, patch(
+        "handlers_membership.get_owner_lang", AsyncMock(return_value=None)
+    ), patch("handlers_membership.set_owner_lang", AsyncMock()):
         await on_my_chat_member(event, pool, bot)
     rg.assert_called_once_with(pool, -1001, 222, "G")
     bot.send_message.assert_called_once()
@@ -44,6 +46,8 @@ async def test_dm_forbidden_queues_pending():
     bot, pool = make_bot(send_message=AsyncMock(side_effect=forbidden())), object()
     with (
         patch("handlers_membership.register_group", AsyncMock(return_value="created")),
+        patch("handlers_membership.get_owner_lang", AsyncMock(return_value=None)),
+        patch("handlers_membership.set_owner_lang", AsyncMock()),
         patch("handlers_membership.add_pending_greeting", AsyncMock()) as ap,
     ):
         await on_my_chat_member(event, pool, bot)
@@ -59,6 +63,7 @@ async def test_flush_pending_delivers_and_clears():
             "handlers_membership.list_pending_greetings",
             AsyncMock(return_value=[(-1001, "G")]),
         ),
+        patch("handlers_membership.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_membership.delete_pending_greeting", AsyncMock()) as dp,
     ):
         await flush_pending(pool, bot, 111)

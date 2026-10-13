@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS owners (
     user_id BIGINT PRIMARY KEY,
     created_at TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE owners ADD COLUMN IF NOT EXISTS lang TEXT;
 CREATE TABLE IF NOT EXISTS groups (
     chat_id BIGINT PRIMARY KEY,
     owner_id BIGINT NOT NULL,
@@ -65,12 +66,55 @@ def should_delete(
     return ctype in blocked
 
 
+from i18n import _, n
+
+STAT_FORMS: dict[str, tuple[str, str]] = {
+    "story_forward": ("{n} forwarded story", "{n} forwarded stories"),
+    "photo": ("{n} photo", "{n} photos"),
+    "video": ("{n} video", "{n} videos"),
+    "video_note": ("{n} video message", "{n} video messages"),
+    "voice": ("{n} voice message", "{n} voice messages"),
+    "audio": ("{n} audio file", "{n} audio files"),
+    "document": ("{n} document", "{n} documents"),
+    "animation": ("{n} GIF", "{n} GIFs"),
+    "sticker": ("{n} sticker", "{n} stickers"),
+    "poll": ("{n} poll", "{n} polls"),
+    "contact": ("{n} contact", "{n} contacts"),
+    "location": ("{n} location", "{n} locations"),
+    "venue": ("{n} venue", "{n} venues"),
+    "dice": ("{n} dice roll", "{n} dice rolls"),
+    "game": ("{n} game", "{n} games"),
+    "invoice": ("{n} invoice", "{n} invoices"),
+    "successful_payment": ("{n} payment", "{n} payments"),
+    "checklist": ("{n} checklist", "{n} checklists"),
+    "text": ("{n} text message", "{n} text messages"),
+}
+
+
 def format_stats(stats: dict[str, int]) -> str:
-    nonzero = sorted((c, n) for c, n in stats.items() if n > 0)
+    nonzero = sorted((c, cnt) for c, cnt in stats.items() if cnt > 0)
     if not nonzero:
-        return "nothing removed yet"
-    parts = [f"{n} {c if n == 1 else c + 's'}" for c, n in nonzero]
-    return "removed messages: " + "; ".join(parts)
+        return _("nothing removed yet")
+    parts = []
+    for ctype, cnt in nonzero:
+        singular, plural = STAT_FORMS.get(ctype, (ctype, ctype + "s"))
+        parts.append(n(singular, plural, cnt).format(n=cnt))
+    return _("removed messages: {list}").format(list="; ".join(parts))
+
+
+async def get_owner_lang(pool: asyncpg.Pool, user_id: int) -> str | None:
+    async with pool.acquire() as conn:
+        return await conn.fetchval("SELECT lang FROM owners WHERE user_id = $1", user_id)
+
+
+async def set_owner_lang(pool: asyncpg.Pool, user_id: int, lang: str) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO owners (user_id, lang) VALUES ($1, $2)"
+            " ON CONFLICT (user_id) DO UPDATE SET lang = EXCLUDED.lang",
+            user_id,
+            lang,
+        )
 
 
 async def init_pool(dsn: str) -> asyncpg.Pool:

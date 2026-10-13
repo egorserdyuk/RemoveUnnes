@@ -34,3 +34,24 @@ Integration tests need a live DB:
 ```bash
 POSTGRES_DSN_TEST=postgresql://remover:remover@localhost:5432/remover python -m pytest tests/ -m integration
 ```
+
+## Languages (i18n)
+
+UI copy uses [Babel](https://babel.pocoo.org/) message catalogs (`locales/`).
+English msgids are the source; Russian entries are currently empty
+placeholders (the bot falls back to English).
+
+Workflow after changing user-visible strings:
+
+```bash
+.venv/bin/pybabel extract -F babel.cfg --keyword=_ --keyword=n:1,2 \
+  -o locales/messages.pot bot.py config.py db.py classify.py keyboards.py \
+  texts.py notices.py handlers_private.py handlers_group.py \
+  handlers_membership.py handlers_whitelist.py i18n.py
+.venv/bin/pybabel update -i locales/messages.pot -d locales
+# fill in msgstr in locales/ru/LC_MESSAGES/messages.po, then:
+.venv/bin/pybabel compile -d locales
+```
+
+Commit the updated `.po` and compiled `.mo` files (the Docker image
+needs the `.mo` files at runtime).

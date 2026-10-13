@@ -77,6 +77,7 @@ async def test_no_rights_dms_owner_once():
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()),
         patch("handlers_group.get_owner", AsyncMock(return_value=111)),
+        patch("handlers_group.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_group._last_notify", {}),
         patch("handlers_group._now", return_value=now),
     ):
@@ -110,6 +111,8 @@ async def test_notify_sent_when_enabled():
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()),
         patch("handlers_group.get_notify", AsyncMock(return_value=True)),
+        patch("handlers_group.get_owner", AsyncMock(return_value=111)),
+        patch("handlers_group.get_owner_lang", AsyncMock(return_value="en")),
     ):
         await handle_group_message(msg, pool, bot)
     bot.send_message.assert_called_once()

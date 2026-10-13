@@ -9,7 +9,7 @@ import texts
 def make_callback(data, user_id):
     return SimpleNamespace(
         data=data,
-        from_user=SimpleNamespace(id=user_id),
+        from_user=SimpleNamespace(id=user_id, language_code="en"),
         message=SimpleNamespace(
             chat=SimpleNamespace(id=999, type="private"),
             edit_text=AsyncMock(),
@@ -25,13 +25,14 @@ async def test_non_owner_tap_changes_nothing():
     pool = object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_private.get_blocked") as gb,
         patch("handlers_private.whitelist_count") as wc,
     ):
         await on_group_selected(cb, pool)
     gb.assert_not_called()
     wc.assert_not_called()
-    cb.answer.assert_called_once_with(texts.NOT_OWNER, show_alert=True)
+    cb.answer.assert_called_once_with(texts.NOT_OWNER(), show_alert=True)
 
 
 async def test_toggle_roundtrip_updates_blocked():
@@ -41,6 +42,7 @@ async def test_toggle_roundtrip_updates_blocked():
     pool = object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_private.toggle_blocked", AsyncMock(return_value={"photo"})) as tb,
         patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
     ):
@@ -56,6 +58,7 @@ async def test_notify_toggle_rerenders_menu():
     pool = object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_private.toggle_notify", AsyncMock(return_value=True)) as tn,
         patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
         patch("handlers_private.get_blocked", AsyncMock(return_value=set())),
@@ -70,3 +73,18 @@ async def test_notify_toggle_rerenders_menu():
         b.text for row in cb.message.edit_text.call_args[1]["reply_markup"].inline_keyboard for b in row
     )
     assert "Notifications: ON" in kb_text
+
+
+async def test_language_switch_stores_and_rerenders():
+    from handlers_private import on_language
+
+    cb = make_callback("lang:ru", 111)
+    pool = object()
+    with (
+        patch("handlers_private.set_owner_lang", AsyncMock()) as sl,
+        patch("handlers_private.get_owner_lang", AsyncMock(return_value="ru")),
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[])),
+    ):
+        await on_language(cb, pool)
+    sl.assert_called_once_with(pool, 111, "ru")
+    assert cb.message.edit_text.await_count == 1
