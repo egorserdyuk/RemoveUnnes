@@ -88,3 +88,20 @@ async def test_language_switch_stores_and_rerenders():
         await on_language(cb, pool)
     sl.assert_called_once_with(pool, 111, "ru")
     assert cb.message.edit_text.await_count == 1
+
+
+async def test_stats_has_back_button():
+    from handlers_private import on_stats
+
+    cb = make_callback("stats:-1001", 111)
+    pool = object()
+    with (
+        patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
+        patch("handlers_private.get_stats", AsyncMock(return_value={})),
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
+    ):
+        await on_stats(cb, pool)
+    kb = cb.message.edit_text.call_args[1]["reply_markup"]
+    datas = [b.callback_data for row in kb.inline_keyboard for b in row]
+    assert "group:-1001" in datas

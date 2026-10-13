@@ -73,6 +73,13 @@ def whitelist_kb(chat_id: int, users: list[tuple[int, str | None]]) -> InlineKey
     return builder.as_markup()
 
 
+def back_to_group_kb(chat_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=_("« Back"), callback_data=f"group:{chat_id}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def picker_kb(request_id: int) -> ReplyKeyboardMarkup:
     builder = ReplyKeyboardBuilder()
     builder.button(

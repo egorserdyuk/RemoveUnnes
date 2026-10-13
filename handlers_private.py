@@ -21,7 +21,7 @@ from db import (
     whitelist_count,
 )
 from i18n import _, activate_owner_lang, detect_language, set_lang
-from keyboards import group_menu_kb, groups_kb, types_kb
+from keyboards import back_to_group_kb, group_menu_kb, groups_kb, types_kb
 
 router = Router()
 router.message.filter(F.chat.type == "private")
@@ -172,7 +172,7 @@ async def on_stats(cb: CallbackQuery, pool) -> None:
         body = texts.STATS_EMPTY(await _group_title(pool, cb.from_user.id, chat_id))
     else:
         body = f"{await _group_title(pool, cb.from_user.id, chat_id)}: {body}"
-    await cb.message.edit_text(body)
+    await cb.message.edit_text(body, reply_markup=back_to_group_kb(chat_id))
     await cb.answer()
 
 
