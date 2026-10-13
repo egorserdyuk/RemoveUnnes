@@ -301,43 +301,43 @@ msgid "menace"
 msgstr ""
 
 #: notices.py:16
-msgid "пидорас"
+msgid "asshole"
 msgstr ""
 
 #: notices.py:17
-msgid "хуесос"
+msgid "fuckboy"
 msgstr ""
 
 #: notices.py:18
-msgid "чмо"
+msgid "scumbag"
 msgstr ""
 
 #: notices.py:19
-msgid "ЧМОМ"
+msgid "SCUMBAG"
 msgstr ""
 
 #: notices.py:20
-msgid "уебок"
+msgid "dickhead"
 msgstr ""
 
 #: notices.py:21
-msgid "пидр"
+msgid "faggot"
 msgstr ""
 
 #: notices.py:22
-msgid "гей"
+msgid "gay"
 msgstr ""
 
 #: notices.py:23
-msgid "гейчик"
+msgid "gayboy"
 msgstr ""
 
 #: notices.py:24
-msgid "еба"
+msgid "fuck"
 msgstr ""
 
 #: notices.py:25
-msgid "блядь"
+msgid "bitch"
 msgstr ""
 
 #: notices.py:19

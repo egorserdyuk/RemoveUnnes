@@ -184,43 +184,43 @@ msgid "menace"
 msgstr "угроза"
 
 #: notices.py:16
-msgid "пидорас"
+msgid "asshole"
 msgstr "пидорас"
 
 #: notices.py:17
-msgid "хуесос"
+msgid "fuckboy"
 msgstr "хуесос"
 
 #: notices.py:18
-msgid "чмо"
+msgid "scumbag"
 msgstr "чмо"
 
 #: notices.py:19
-msgid "ЧМОМ"
+msgid "SCUMBAG"
 msgstr "ЧМОМ"
 
 #: notices.py:20
-msgid "уебок"
+msgid "dickhead"
 msgstr "уебок"
 
 #: notices.py:21
-msgid "пидр"
+msgid "faggot"
 msgstr "пидр"
 
 #: notices.py:22
-msgid "гей"
+msgid "gay"
 msgstr "гей"
 
 #: notices.py:23
-msgid "гейчик"
+msgid "gayboy"
 msgstr "гейчик"
 
 #: notices.py:24
-msgid "еба"
+msgid "fuck"
 msgstr "еба"
 
 #: notices.py:25
-msgid "блядь"
+msgid "bitch"
 msgstr "блядь"
 
 #: notices.py:19
