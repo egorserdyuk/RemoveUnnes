@@ -16,3 +16,4 @@ env/
 docker-compose.yml
 Dockerfile
 .dockerignore
+requirements_dev.txt
