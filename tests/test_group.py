@@ -140,8 +140,6 @@ async def test_notify_sent_when_enabled():
         patch("handlers_group.get_notify", AsyncMock(return_value=True)),
         patch("handlers_group.get_owner", AsyncMock(return_value=111)),
         patch("handlers_group.get_owner_lang", AsyncMock(return_value="en")),
-        patch("handlers_group.get_notice_ids", AsyncMock(return_value=[])),
-        patch("handlers_group.set_notice_ids", AsyncMock()),
     ):
         await handle_group_message(pool, app, msg, 777)
     app.send_msg.assert_called_once()
@@ -186,51 +184,44 @@ def _notify_patches(**over):
         get_notify=AsyncMock(return_value=True),
         get_owner=AsyncMock(return_value=111),
         get_owner_lang=AsyncMock(return_value="en"),
-        get_notice_ids=AsyncMock(return_value=[]),
-        set_notice_ids=AsyncMock(),
     )
     kw.update(over)
     return kw
 
 
-async def test_new_notice_deletes_previous_replicas():
+def _patch_notify(patches):
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    stack.enter_context(patch("handlers_group.get_blocked", patches["get_blocked"]))
+    stack.enter_context(patch("handlers_group.is_whitelisted", patches["is_whitelisted"]))
+    stack.enter_context(patch("handlers_group.incr_stat", patches["incr_stat"]))
+    stack.enter_context(patch("handlers_group.get_notify", patches["get_notify"]))
+    stack.enter_context(patch("handlers_group.get_owner", patches["get_owner"]))
+    stack.enter_context(patch("handlers_group.get_owner_lang", patches["get_owner_lang"]))
+    return stack
+
+
+async def test_new_notice_prunes_to_last_two():
     msg, app, pool = _voice_msg(), make_app(), object()
     app.send_msg = AsyncMock(return_value={"message_id": 50})
-    patches = _notify_patches(get_notice_ids=AsyncMock(return_value=[30, 40]))
-    with (
-        patch("handlers_group.get_blocked", patches["get_blocked"]),
-        patch("handlers_group.is_whitelisted", patches["is_whitelisted"]),
-        patch("handlers_group.incr_stat", patches["incr_stat"]),
-        patch("handlers_group.get_notify", patches["get_notify"]),
-        patch("handlers_group.get_owner", patches["get_owner"]),
-        patch("handlers_group.get_owner_lang", patches["get_owner_lang"]),
-        patch("handlers_group.get_notice_ids", patches["get_notice_ids"]),
-        patch("handlers_group.set_notice_ids", patches["set_notice_ids"]),
-    ):
+    recent = {-1001: [30, 40]}
+    with _patch_notify(_notify_patches()), patch("handlers_group._recent_notices", recent):
         await handle_group_message(pool, app, msg, 777)
     assert app.send_msg.await_count == 1
-    deleted = sorted(c[0][1] for c in app.delete_msg.call_args_list)
-    assert 30 in deleted and 40 in deleted
-    patches["set_notice_ids"].assert_called_once_with(pool, -1001, [50])
+    deleted = [c[0][1] for c in app.delete_msg.call_args_list]
+    assert 30 in deleted and 40 not in deleted
+    assert recent == {-1001: [40, 50]}
 
 
 async def test_notice_cleanup_tolerates_missing_message_id():
     msg, app, pool = _voice_msg(), make_app(), object()
     app.send_msg = AsyncMock(return_value=None)
-    patches = _notify_patches(get_notice_ids=AsyncMock(return_value=[30]))
-    with (
-        patch("handlers_group.get_blocked", patches["get_blocked"]),
-        patch("handlers_group.is_whitelisted", patches["is_whitelisted"]),
-        patch("handlers_group.incr_stat", patches["incr_stat"]),
-        patch("handlers_group.get_notify", patches["get_notify"]),
-        patch("handlers_group.get_owner", patches["get_owner"]),
-        patch("handlers_group.get_owner_lang", patches["get_owner_lang"]),
-        patch("handlers_group.get_notice_ids", patches["get_notice_ids"]),
-        patch("handlers_group.set_notice_ids", patches["set_notice_ids"]),
-    ):
+    recent = {-1001: [30]}
+    with _patch_notify(_notify_patches()), patch("handlers_group._recent_notices", recent):
         await handle_group_message(pool, app, msg, 777)
-    assert (-1001, 30) in [c[0] for c in app.delete_msg.call_args_list]
-    patches["set_notice_ids"].assert_called_once_with(pool, -1001, [])
+    assert [c[0] for c in app.delete_msg.call_args_list] == [(-1001, 1)]
+    assert recent == {-1001: [30]}
 
 
 async def test_replica_delete_errors_swallowed():
@@ -245,16 +236,7 @@ async def test_replica_delete_errors_swallowed():
 
     app.send_msg = AsyncMock(return_value={"message_id": 50})
     app.delete_msg = AsyncMock(side_effect=fail_replicas)
-    patches = _notify_patches(get_notice_ids=AsyncMock(return_value=[30]))
-    with (
-        patch("handlers_group.get_blocked", patches["get_blocked"]),
-        patch("handlers_group.is_whitelisted", patches["is_whitelisted"]),
-        patch("handlers_group.incr_stat", patches["incr_stat"]),
-        patch("handlers_group.get_notify", patches["get_notify"]),
-        patch("handlers_group.get_owner", patches["get_owner"]),
-        patch("handlers_group.get_owner_lang", patches["get_owner_lang"]),
-        patch("handlers_group.get_notice_ids", patches["get_notice_ids"]),
-        patch("handlers_group.set_notice_ids", patches["set_notice_ids"]),
-    ):
+    recent = {-1001: [30, 40]}
+    with _patch_notify(_notify_patches()), patch("handlers_group._recent_notices", recent):
         await handle_group_message(pool, app, msg, 777)
-    patches["set_notice_ids"].assert_called_once_with(pool, -1001, [50])
+    assert recent == {-1001: [40, 50]}

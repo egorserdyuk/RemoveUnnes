@@ -7,21 +7,16 @@ from goygram.errors import BadRequestError, ForbiddenError
 import texts
 from adapters import message_fields
 from classify import classify, is_command_exempt
-from db import (
-    get_blocked,
-    get_notice_ids,
-    get_notify,
-    get_owner,
-    get_owner_lang,
-    incr_stat,
-    is_whitelisted,
-    set_notice_ids,
-)
+from db import get_blocked, get_notify, get_owner, get_owner_lang, incr_stat, is_whitelisted
 from i18n import set_lang
 from notices import format_mention, render_notice
 
 NOTIFY_WINDOW = timedelta(minutes=10)
 _last_notify: dict[tuple[int], datetime] = {}
+# Last bot notice message ids per chat (in-memory). Only the two most recent
+# replicas are kept; older ones are deleted when a new notice goes out.
+_recent_notices: dict[int, list[int]] = {}
+KEEP_NOTICES = 2
 
 
 def _now() -> datetime:
@@ -75,20 +70,21 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
 
 
 async def _send_notice(pool, app, chat_id: int, text: str) -> None:
-    """Post a notice, deleting all previous notice replicas first (keep latest)."""
+    """Post a notice, pruning older replicas so only the last two survive."""
     try:
         sent = await app.send_msg(chat_id, text)
     except (ForbiddenError, BadRequestError):
         return
     new_id = sent.get("message_id") if isinstance(sent, dict) else None
-    old_ids = await get_notice_ids(pool, chat_id)
-    for mid in old_ids:
-        if mid != new_id:
+    olds = _recent_notices.get(chat_id, [])
+    keep = (olds + ([new_id] if new_id is not None else []))[-KEEP_NOTICES:]
+    for mid in dict.fromkeys(olds):
+        if mid not in keep:
             try:
                 await app.delete_msg(chat_id, mid)
             except (ForbiddenError, BadRequestError):
                 pass
-    await set_notice_ids(pool, chat_id, [new_id] if new_id is not None else [])
+    _recent_notices[chat_id] = keep
 
 
 async def handle_group_message(pool, app, msg, bot_id: int) -> None:

@@ -47,12 +47,7 @@ CREATE TABLE IF NOT EXISTS notify_state (
     notified_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE groups ADD COLUMN IF NOT EXISTS notify_enabled BOOLEAN NOT NULL DEFAULT FALSE;
-CREATE TABLE IF NOT EXISTS notice_msgs (
-    chat_id BIGINT NOT NULL,
-    msg_id BIGINT NOT NULL,
-    sent_at TIMESTAMPTZ DEFAULT now(),
-    PRIMARY KEY (chat_id, msg_id)
-);
+DROP TABLE IF EXISTS notice_msgs;
 """
 
 
@@ -229,25 +224,6 @@ async def toggle_notify(pool: asyncpg.Pool, chat_id: int) -> bool:
             chat_id,
         )
         return bool(row["notify_enabled"]) if row else False
-
-
-async def get_notice_ids(pool: asyncpg.Pool, chat_id: int) -> list[int]:
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT msg_id FROM notice_msgs WHERE chat_id = $1 ORDER BY sent_at", chat_id
-        )
-        return [r["msg_id"] for r in rows]
-
-
-async def set_notice_ids(pool: asyncpg.Pool, chat_id: int, msg_ids: list[int]) -> None:
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute("DELETE FROM notice_msgs WHERE chat_id = $1", chat_id)
-            await conn.executemany(
-                "INSERT INTO notice_msgs (chat_id, msg_id) VALUES ($1, $2)"
-                " ON CONFLICT DO NOTHING",
-                [(chat_id, mid) for mid in msg_ids],
-            )
 
 
 async def is_whitelisted(pool: asyncpg.Pool, chat_id: int, user_id: int) -> bool:
