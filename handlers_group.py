@@ -7,7 +7,16 @@ from goygram.errors import BadRequestError, ForbiddenError
 import texts
 from adapters import message_fields
 from classify import classify, is_command_exempt
-from db import get_blocked, get_notify, get_owner, get_owner_lang, incr_stat, is_whitelisted
+from db import (
+    get_blocked,
+    get_notice_ids,
+    get_notify,
+    get_owner,
+    get_owner_lang,
+    incr_stat,
+    is_whitelisted,
+    set_notice_ids,
+)
 from i18n import set_lang
 from notices import format_mention, render_notice
 
@@ -62,10 +71,24 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
         owner = await get_owner(pool, chat_id)
         lang = await get_owner_lang(pool, owner) if owner is not None else None
         set_lang(lang or "en")
-        try:
-            await app.send_msg(chat_id, render_notice(format_mention(sender), ctype))
-        except (ForbiddenError, BadRequestError):
-            pass
+        await _send_notice(pool, app, chat_id, render_notice(format_mention(sender), ctype))
+
+
+async def _send_notice(pool, app, chat_id: int, text: str) -> None:
+    """Post a notice, deleting all previous notice replicas first (keep latest)."""
+    try:
+        sent = await app.send_msg(chat_id, text)
+    except (ForbiddenError, BadRequestError):
+        return
+    new_id = sent.get("message_id") if isinstance(sent, dict) else None
+    old_ids = await get_notice_ids(pool, chat_id)
+    for mid in old_ids:
+        if mid != new_id:
+            try:
+                await app.delete_msg(chat_id, mid)
+            except (ForbiddenError, BadRequestError):
+                pass
+    await set_notice_ids(pool, chat_id, [new_id] if new_id is not None else [])
 
 
 async def handle_group_message(pool, app, msg, bot_id: int) -> None:
