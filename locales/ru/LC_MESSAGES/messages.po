@@ -226,42 +226,42 @@ msgstr "блядь"
 #: notices.py:19
 #, python-brace-format
 msgid "That {insult} {user} tried to send a {type}! Denied."
-msgstr "Этот {insult} {user} попытался отправить {type}! Запрещено."
+msgstr "{user} Че ты, хуй во рту? Хотел голосовое записать?"
 
 #: notices.py:20
 #, python-brace-format
 msgid "{user} thought a {type} would sneak past me. Adorable. Deleted."
-msgstr "{user} думал, что {type} проскочит мимо меня. Мило. Удалено."
+msgstr "Ты че {user}, плохо слышишь меня, толстый блять!? Здесь нельзя голосовые!"
 
 #: notices.py:21
 #, python-brace-format
 msgid "Nice try, {user} — no {type} allowed here."
-msgstr "Хорошая попытка, {user} — здесь запрещены {type}."
+msgstr "Еще одно голосовое и я дам цветами леща {user}"
 
 #: notices.py:22
 #, python-brace-format
 msgid "The {insult} {user} strikes again with a forbidden {type}!"
-msgstr "{insult} {user} снова пытается отправить запрещённый {type}!"
+msgstr "{user} попробуй ЕЩЁ!"
 
 #: notices.py:23
 #, python-brace-format
 msgid "{user} tested the {type} filter. The filter won."
-msgstr "{user} проверил фильтр на прочность. Фильтр победил."
+msgstr "Еще одно голосовое от {user} и я наложу себе в руки!"
 
 #: notices.py:24
 #, python-brace-format
 msgid "A wild {type} from {user} appeared! I swept it away."
-msgstr "Дикий {type} от {user} появился! Я его смахнул."
+msgstr "Да мне похуй что ты вообще говоришь {user}"
 
 #: notices.py:25
 #, python-brace-format
 msgid "{user}, sweetie, {type} are banned here. Gone."
-msgstr "{user}, милый(ая), здесь запрещены {type}. Удалено."
+msgstr "{user} Че ты, хуй во рту? Хотел голосовое записать?"
 
 #: notices.py:26
 #, python-brace-format
 msgid "Breaking news: {user}'s {type} didn't survive. What a {insult}."
-msgstr "Срочные новости: {type} от {user} не выжил. Вот это {insult}."
+msgstr "Ты че {user}, плохо слышишь меня, толстый блять!? Здесь нельзя голосовые!"
 
 #: notices.py:30
 msgid "forwarded story"
