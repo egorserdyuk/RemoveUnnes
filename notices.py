@@ -2,7 +2,7 @@
 
 import random
 
-from i18n import _, msgid
+from i18n import _, get_lang, msgid
 
 INSULTS: list[str] = [
     msgid("jerk"),
@@ -59,8 +59,38 @@ CONTENT_LABELS: dict[str, str] = {
 }
 
 
+
+RUSSIAN_REPLIES: list[str] = [
+    "{user} Че ты, хуй во рту? Хотел голосовое записать?",
+    "Ты че {user}, плохо слышишь меня, толстый блять!? Здесь нельзя голосовые!",
+    "Еще одно голосовое и я дам цветами леща {user}",
+    "{user} попробуй ЕЩЁ!",
+    "Еще одно голосовое от {user} и я наложу себе в руки!",
+    "Да мне похуй что ты вообще говоришь {user}",
+    "{user}, я прочитал твоё голосовое. Не слушал, просто по лицу видно, что хуйню сказал.",
+    "{user}, ты бы ещё письмо голубем отправил. Пиши текстом, долбоёб",
+    "Голосовое от {user} удалено. Грустно. Хотя нет, вообще похуй.",
+    "{user}, голосовое не удалось отправить: у бота сегодня плохое настроение. И он твою мать ебал.",
+    "{user}, у меня на тебя заведена папка «Дебилы, которые не умеют писать текстом». Ты там уже на первом месте.",
+    "Голосовое от {user} отправлено в архив «Хуйня, которую никто не просил».",
+    "{user}, запиши голосовое своей маме. Она, может, и послушает. Мы нет.",
+    "Это не баг, {user}, это фича. Фича называется «пошёл нахуй со своими голосовыми».",
+    "Жиза: {user} отправил голосовое, а бот его удалил. Пиздец, как предсказуемо.",
+]
+
+# Common aliases for language-specific Russian replies.
+RUSSIAN_TEMPLATES = RUSSIAN_REPLIES
+RU_REPLIES = RUSSIAN_REPLIES
+RUSSIAN_PHRASES = RUSSIAN_REPLIES
+RUSSIAN_ROASTS = RUSSIAN_REPLIES
+RUSSIAN_NOTICES = RUSSIAN_REPLIES
+
+
+
 def render_notice(user: str, ctype: str, rng=random.choice) -> str:
     """Pick a random template + insult and fill in user and type label."""
+    if get_lang() == "ru":
+        return rng(RUSSIAN_REPLIES).format(user=user)
     return _(rng(NOTICE_TEMPLATES)).format(
         user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
     )
