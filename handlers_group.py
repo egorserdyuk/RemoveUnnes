@@ -9,14 +9,14 @@ from adapters import message_fields
 from classify import classify, is_command_exempt
 from db import get_blocked, get_notify, get_owner, get_owner_lang, incr_stat, is_whitelisted
 from i18n import set_lang
-from notices import format_mention, render_notice
+from notices import format_mention, render_unique_notice
 
 NOTIFY_WINDOW = timedelta(minutes=10)
 _last_notify: dict[tuple[int], datetime] = {}
-# Last bot notice message ids per chat (in-memory). Only the two most recent
-# replicas are kept; older ones are deleted when a new notice goes out.
-_recent_notices: dict[int, list[int]] = {}
-KEEP_NOTICES = 2
+# Last bot notice texts per chat (in-memory). A new notice is re-rolled while
+# it matches one of these, so back-to-back replies never repeat themselves.
+_recent_notice_texts: dict[int, list[str]] = {}
+KEEP_NOTICE_TEXTS = 2
 
 
 def _now() -> datetime:
@@ -66,25 +66,18 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
         owner = await get_owner(pool, chat_id)
         lang = await get_owner_lang(pool, owner) if owner is not None else None
         set_lang(lang or "en")
-        await _send_notice(pool, app, chat_id, render_notice(format_mention(sender), ctype))
+        await _send_notice(pool, app, chat_id, format_mention(sender), ctype)
 
 
-async def _send_notice(pool, app, chat_id: int, text: str) -> None:
-    """Post a notice, pruning older replicas so only the last two survive."""
+async def _send_notice(pool, app, chat_id: int, user: str, ctype: str) -> None:
+    """Post a notice whose text doesn't repeat the previous bot replies."""
+    previous = _recent_notice_texts.get(chat_id, [])
+    text = render_unique_notice(user, ctype, previous)
     try:
-        sent = await app.send_msg(chat_id, text)
+        await app.send_msg(chat_id, text)
     except (ForbiddenError, BadRequestError):
         return
-    new_id = sent.get("message_id") if isinstance(sent, dict) else None
-    olds = _recent_notices.get(chat_id, [])
-    keep = (olds + ([new_id] if new_id is not None else []))[-KEEP_NOTICES:]
-    for mid in dict.fromkeys(olds):
-        if mid not in keep:
-            try:
-                await app.delete_msg(chat_id, mid)
-            except (ForbiddenError, BadRequestError):
-                pass
-    _recent_notices[chat_id] = keep
+    _recent_notice_texts[chat_id] = (previous + [text])[-KEEP_NOTICE_TEXTS:]
 
 
 async def handle_group_message(pool, app, msg, bot_id: int) -> None:

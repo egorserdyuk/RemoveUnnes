@@ -34,3 +34,45 @@ def test_format_mention_prefers_username():
 def test_format_mention_falls_back_to_name_then_someone():
     assert format_mention(SimpleNamespace(username=None, first_name="Bob")) == "Bob"
     assert format_mention(None) == "someone"
+
+
+class ScriptedRng:
+    """Returns pre-scripted template/insult picks in call order."""
+
+    def __init__(self, picks):
+        self.picks = list(picks)
+
+    def __call__(self, choices):
+        pick = self.picks.pop(0)
+        assert pick in choices, f"{pick!r} not a valid choice"
+        return pick
+
+
+def test_unique_notice_rerolls_duplicates():
+    from notices import NOTICE_TEMPLATES, render_unique_notice
+
+    dupe = NOTICE_TEMPLATES[0].format(user="@bob", insult="rascal", type="voice message")
+    other = NOTICE_TEMPLATES[1].format(user="@bob", insult="rascal", type="voice message")
+    rng = ScriptedRng([NOTICE_TEMPLATES[0], "rascal", NOTICE_TEMPLATES[1], "rascal"])
+    assert render_unique_notice("@bob", "voice", [dupe], rng=rng) == other
+
+
+def test_unique_notice_passes_through_when_fresh():
+    from notices import NOTICE_TEMPLATES, render_unique_notice
+
+    rng = ScriptedRng([NOTICE_TEMPLATES[0], "jerk"])
+    text = render_unique_notice("@bob", "voice", ["something else"], rng=rng)
+    assert "@bob" in text and "voice message" in text
+
+
+def test_unique_notice_gives_up_after_max_attempts():
+    import notices
+    from notices import render_unique_notice
+
+    rng = ScriptedRng(
+        [notices.NOTICE_TEMPLATES[0], "jerk"] * (notices.MAX_UNIQUE_ATTEMPTS + 1)
+    )
+    dupe = notices.NOTICE_TEMPLATES[0].format(
+        user="@bob", insult="jerk", type="voice message"
+    )
+    assert render_unique_notice("@bob", "voice", [dupe], rng=rng) == dupe

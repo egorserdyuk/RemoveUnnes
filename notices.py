@@ -111,6 +111,35 @@ RUSSIAN_NOTICES = RUSSIAN_REPLIES
 
 
 
+MAX_UNIQUE_ATTEMPTS = 10
+
+
+def render_notice(user: str, ctype: str, rng=random.choice) -> str:
+    """Pick a random template + insult and fill in user and type label."""
+    if get_lang() == "ru":
+        return rng(RUSSIAN_REPLIES).format(user=user)
+    return _(rng(NOTICE_TEMPLATES)).format(
+        user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
+    )
+
+
+def render_unique_notice(
+    user: str, ctype: str, previous: list[str], rng=random.choice
+) -> str:
+    """Render a notice that doesn't repeat any of the previous bot replies.
+
+    Re-rolls the random pick while the text matches a recent one; after
+    MAX_UNIQUE_ATTEMPTS draws the last one is sent as-is (never hangs).
+    """
+    text = render_notice(user, ctype, rng=rng)
+    for _ in range(MAX_UNIQUE_ATTEMPTS - 1):
+        if text not in previous:
+            return text
+        text = render_notice(user, ctype, rng=rng)
+    return text
+
+
+
 def render_notice(user: str, ctype: str, rng=random.choice) -> str:
     """Pick a random template + insult and fill in user and type label."""
     if get_lang() == "ru":

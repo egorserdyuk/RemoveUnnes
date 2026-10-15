@@ -202,41 +202,37 @@ def _patch_notify(patches):
     return stack
 
 
-async def test_new_notice_prunes_to_last_two():
+async def test_new_notice_avoids_previous_replies():
     msg, app, pool = _voice_msg(), make_app(), object()
-    app.send_msg = AsyncMock(return_value={"message_id": 50})
-    recent = {-1001: [30, 40]}
-    with _patch_notify(_notify_patches()), patch("handlers_group._recent_notices", recent):
+    recent = {-1001: ["old1", "old2"]}
+    with _patch_notify(_notify_patches()), patch(
+        "handlers_group._recent_notice_texts", recent
+    ), patch("handlers_group.render_unique_notice", return_value="FRESH") as ru:
         await handle_group_message(pool, app, msg, 777)
-    assert app.send_msg.await_count == 1
-    deleted = [c[0][1] for c in app.delete_msg.call_args_list]
-    assert 30 in deleted and 40 not in deleted
-    assert recent == {-1001: [40, 50]}
+    ru.assert_called_once_with("@bob", "voice", ["old1", "old2"])
+    app.send_msg.assert_called_once_with(-1001, "FRESH")
+    assert recent == {-1001: ["old2", "FRESH"]}
 
 
-async def test_notice_cleanup_tolerates_missing_message_id():
+async def test_previous_replicas_are_never_deleted():
     msg, app, pool = _voice_msg(), make_app(), object()
-    app.send_msg = AsyncMock(return_value=None)
-    recent = {-1001: [30]}
-    with _patch_notify(_notify_patches()), patch("handlers_group._recent_notices", recent):
+    recent = {-1001: ["old1", "old2"]}
+    with _patch_notify(_notify_patches()), patch(
+        "handlers_group._recent_notice_texts", recent
+    ):
         await handle_group_message(pool, app, msg, 777)
     assert [c[0] for c in app.delete_msg.call_args_list] == [(-1001, 1)]
-    assert recent == {-1001: [30]}
+    assert len(recent[-1001]) == 2
 
 
-async def test_replica_delete_errors_swallowed():
-    from goygram.errors import BadRequestError
+async def test_notice_send_failure_records_nothing():
+    from goygram.errors import ForbiddenError
 
     msg, app, pool = _voice_msg(), make_app(), object()
-
-    async def fail_replicas(chat_id, msg_id):
-        if msg_id != 1:
-            raise BadRequestError(400, "gone")
-        return None
-
-    app.send_msg = AsyncMock(return_value={"message_id": 50})
-    app.delete_msg = AsyncMock(side_effect=fail_replicas)
-    recent = {-1001: [30, 40]}
-    with _patch_notify(_notify_patches()), patch("handlers_group._recent_notices", recent):
+    app.send_msg = AsyncMock(side_effect=ForbiddenError(403, "blocked"))
+    recent = {-1001: ["old1"]}
+    with _patch_notify(_notify_patches()), patch(
+        "handlers_group._recent_notice_texts", recent
+    ):
         await handle_group_message(pool, app, msg, 777)
-    assert recent == {-1001: [40, 50]}
+    assert recent == {-1001: ["old1"]}
