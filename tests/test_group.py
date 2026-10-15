@@ -1,111 +1,138 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-NOTIFY_WINDOW = timedelta(minutes=10)
+from goygram.errors import BadRequestError
+
+import handlers_group
+from handlers_group import handle_edited_message, handle_group_message
+
+NOTIFY_WINDOW = handlers_group.NOTIFY_WINDOW
 
 
-def make_msg(*, text=None, entities=None, photo=None, voice=None, from_id=111,
-             username="bob", first_name="Bob", msg_id=1, chat_id=-1001):
+class GMsg:
+    """Mimics goygram Obj: normalized attrs + deep .get() into the message dict."""
+
+    def __init__(self, message):
+        self._message = message
+        self.msg_id = message.get("message_id")
+        self.chat_id = (message.get("chat") or {}).get("id")
+        self.chat_type = (message.get("chat") or {}).get("type")
+        frm = message.get("from")
+        self.from_id = frm.get("id") if frm else None
+        self.text = message.get("text") or message.get("caption") or ""
+
+    def get(self, key, default=None):
+        return self._message.get(key, default)
+
+
+def make_msg(**kw):
+    base = dict(
+        message_id=1,
+        chat={"id": -1001, "type": "supergroup", "title": "G"},
+        text=None,
+        entities=[],
+    )
+    base.update(kw)
+    return base
+
+
+def sender(uid=111, username="bob", first_name="Bob"):
+    return {"id": uid, "username": username, "first_name": first_name}
+
+
+def make_app(self_id=777):
     return SimpleNamespace(
-        message_id=msg_id,
-        chat=SimpleNamespace(id=chat_id, type="supergroup", title="G"),
-        from_user=SimpleNamespace(id=from_id, username=username, first_name=first_name) if from_id is not None else None,
-        sender_chat=None,
-        text=text,
-        entities=entities,
-        photo=photo,
-        video=None, video_note=None, voice=voice, audio=None, document=None,
-        animation=None, sticker=None, poll=None, contact=None, location=None,
-        venue=None, dice=None, game=None, invoice=None, successful_payment=None,
-        checklist=None, story=None,
-        new_chat_members=None, left_chat_member=None, pinned_message=None,
-        chat_shared=None, users_shared=None,
+        id=self_id,
+        send_msg=AsyncMock(),
+        delete_msg=AsyncMock(),
+        edit_msg=AsyncMock(),
     )
 
 
-def make_bot(self_id=777):
-    return SimpleNamespace(id=self_id, delete_message=AsyncMock(), send_message=AsyncMock())
-
-
 async def test_blocked_photo_deleted_and_counted():
-    from handlers_group import handle_group_message
-
-    msg, bot, pool = make_msg(photo=[{"file_id": "p"}]), make_bot(), object()
+    msg, app, pool = (
+        GMsg(make_msg(**{"from": sender(), "photo": [{}]})),
+        make_app(),
+        object(),
+    )
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()) as incr,
     ):
-        await handle_group_message(msg, pool, bot)
-    bot.delete_message.assert_called_once_with(-1001, 1)
+        await handle_group_message(pool, app, msg, 777)
+    app.delete_msg.assert_called_once_with(-1001, 1)
     incr.assert_called_once_with(pool, -1001, "photo")
 
 
 async def test_allowed_type_passes():
-    from handlers_group import handle_group_message
-
-    msg, bot, pool = make_msg(text="hello"), make_bot(), object()
+    msg, app, pool = GMsg(make_msg(**{"from": sender(), "text": "hello"})), make_app(), object()
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()) as incr,
     ):
-        await handle_group_message(msg, pool, bot)
-    bot.delete_message.assert_not_called()
+        await handle_group_message(pool, app, msg, 777)
+    app.delete_msg.assert_not_called()
     incr.assert_not_called()
 
 
+async def test_private_message_ignored():
+    raw = make_msg(**{"from": sender(), "text": "hi"})
+    raw["chat"] = {"id": 999, "type": "private"}
+    msg, app, pool = GMsg(raw), make_app(), object()
+    with patch("handlers_group.get_blocked", AsyncMock()) as gb:
+        await handle_group_message(pool, app, msg, 777)
+    gb.assert_not_called()
+    app.delete_msg.assert_not_called()
+
+
 async def test_no_rights_dms_owner_once():
-    from unittest.mock import MagicMock
-
-    from aiogram.exceptions import TelegramBadRequest
-
-    import handlers_group
-    from handlers_group import handle_group_message
-
-    msg = make_msg(photo=[{"file_id": "p"}])
-    err = TelegramBadRequest(method=MagicMock(), message="no rights")
-    bot = make_bot()
-    bot.delete_message = AsyncMock(side_effect=err)
+    msg = GMsg(make_msg(**{"from": sender(), "photo": [{}]}))
+    err = BadRequestError(400, "no rights")
+    app = make_app()
+    app.delete_msg = AsyncMock(side_effect=err)
     pool = object()
     now = datetime.now(timezone.utc)
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()),
+        patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.get_owner", AsyncMock(return_value=111)),
         patch("handlers_group.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_group._last_notify", {}),
         patch("handlers_group._now", return_value=now),
     ):
-        await handle_group_message(msg, pool, bot)
-        await handle_group_message(msg, pool, bot)
-        assert bot.send_message.call_count == 1
+        await handle_group_message(pool, app, msg, 777)
+        await handle_group_message(pool, app, msg, 777)
+        assert app.send_msg.call_count == 1
         assert handlers_group._last_notify[(-1001,)] == now
 
 
 async def test_edited_message_rechecked():
-    from handlers_group import handle_edited_message
-
-    msg, bot, pool = make_msg(photo=[{"file_id": "p"}]), make_bot(), object()
+    msg, app, pool = (
+        GMsg(make_msg(**{"from": sender(), "photo": [{}]})),
+        make_app(),
+        object(),
+    )
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.get_notify", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()) as incr,
     ):
-        await handle_edited_message(msg, pool, bot)
-    bot.delete_message.assert_called_once()
+        await handle_edited_message(pool, app, msg, 777)
+    app.delete_msg.assert_called_once()
     incr.assert_called_once()
 
 
 async def test_notify_sent_when_enabled():
-    from handlers_group import handle_group_message
-
-    msg, bot, pool = make_msg(voice={"file_id": "v"}), make_bot(), object()
+    raw = make_msg(**{"from": sender(), "voice": {"file_id": "v"}})
+    msg, app, pool = GMsg(raw), make_app(), object()
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"voice"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
@@ -114,22 +141,32 @@ async def test_notify_sent_when_enabled():
         patch("handlers_group.get_owner", AsyncMock(return_value=111)),
         patch("handlers_group.get_owner_lang", AsyncMock(return_value="en")),
     ):
-        await handle_group_message(msg, pool, bot)
-    bot.send_message.assert_called_once()
-    args = bot.send_message.call_args[0]
+        await handle_group_message(pool, app, msg, 777)
+    app.send_msg.assert_called_once()
+    args = app.send_msg.call_args[0]
     assert args[0] == -1001
     assert "@bob" in args[1] and "voice message" in args[1]
 
 
 async def test_notify_silent_when_disabled():
-    from handlers_group import handle_group_message
-
-    msg, bot, pool = make_msg(voice={"file_id": "v"}), make_bot(), object()
+    raw = make_msg(**{"from": sender(), "voice": {"file_id": "v"}})
+    msg, app, pool = GMsg(raw), make_app(), object()
     with (
         patch("handlers_group.get_blocked", AsyncMock(return_value={"voice"})),
         patch("handlers_group.is_whitelisted", AsyncMock(return_value=False)),
         patch("handlers_group.incr_stat", AsyncMock()),
         patch("handlers_group.get_notify", AsyncMock(return_value=False)),
     ):
-        await handle_group_message(msg, pool, bot)
-    bot.send_message.assert_not_called()
+        await handle_group_message(pool, app, msg, 777)
+    app.send_msg.assert_not_called()
+
+
+async def test_skips_own_messages():
+    msg, app, pool = (
+        GMsg(make_msg(**{"from": sender(uid=777), "text": "hi"})),
+        make_app(),
+        object(),
+    )
+    with patch("handlers_group.get_blocked", AsyncMock()) as gb:
+        await handle_group_message(pool, app, msg, 777)
+    gb.assert_not_called()

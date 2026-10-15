@@ -22,7 +22,7 @@ CONTENT_TYPES: list[str] = [
     "text",
 ]
 
-# aiogram Message attribute backing each content type.
+# Bot API message attribute backing each content type.
 _FIELD_BY_TYPE: tuple[tuple[str, str], ...] = (
     ("story_forward", "story"),
     ("photo", "photo"),

@@ -1,63 +1,89 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-from aiogram.exceptions import TelegramForbiddenError
+from goygram.errors import ForbiddenError
 
 
-def make_event(old="left", new="member", inviter=111, chat_id=-1001):
-    return SimpleNamespace(
-        chat=SimpleNamespace(id=chat_id, title="G"),
-        from_user=SimpleNamespace(id=inviter, language_code="en"),
-        old_chat_member=SimpleNamespace(status=old),
-        new_chat_member=SimpleNamespace(status=new, user=SimpleNamespace(id=777)),
+class GMember:
+    def __init__(self, old="left", new="member", inviter=111, chat_id=-1001, user_id=777):
+        self.old = old
+        self.new = new
+        self.chat_id = chat_id
+        self.user_id = user_id
+        self.from_id = inviter
+        self._chat = {"id": chat_id, "title": "G"}
+
+    def get(self, key, default=None):
+        if key == "chat":
+            return self._chat
+        return default
+
+
+def make_app(**kw):
+    app = SimpleNamespace(
+        send_msg=AsyncMock(), delete_msg=AsyncMock(), edit_msg=AsyncMock()
     )
-
-
-def make_bot(**kw):
-    bot = SimpleNamespace(id=777, send_message=AsyncMock())
     for k, v in kw.items():
-        setattr(bot, k, v)
-    return bot
-
-
-def forbidden():
-    return TelegramForbiddenError(method=MagicMock(), message="Forbidden: bot was blocked")
+        setattr(app, k, v)
+    return app
 
 
 async def test_readd_different_owner_fresh_start():
     from handlers_membership import on_my_chat_member
 
-    event = make_event(old="kicked", new="administrator", inviter=222)
-    bot, pool = make_bot(), object()
-    with patch(
-        "handlers_membership.register_group", AsyncMock(return_value="fresh_start")
-    ) as rg, patch(
-        "handlers_membership.get_owner_lang", AsyncMock(return_value=None)
-    ), patch("handlers_membership.set_owner_lang", AsyncMock()):
-        await on_my_chat_member(event, pool, bot)
+    member = GMember(old="kicked", new="administrator", inviter=222)
+    app, pool = make_app(), object()
+    with (
+        patch("handlers_membership.register_group", AsyncMock(return_value="fresh_start")) as rg,
+        patch("handlers_membership.get_owner_lang", AsyncMock(return_value=None)),
+        patch("handlers_membership.set_owner_lang", AsyncMock()),
+    ):
+        await on_my_chat_member(pool, app, member, 777)
     rg.assert_called_once_with(pool, -1001, 222, "G")
-    bot.send_message.assert_called_once()
+    app.send_msg.assert_called_once()
+
+
+async def test_ignores_other_members():
+    from handlers_membership import on_my_chat_member
+
+    member = GMember(user_id=555)
+    app, pool = make_app(), object()
+    with patch("handlers_membership.register_group", AsyncMock()) as rg:
+        await on_my_chat_member(pool, app, member, 777)
+    rg.assert_not_called()
+    app.send_msg.assert_not_called()
 
 
 async def test_dm_forbidden_queues_pending():
     from handlers_membership import on_my_chat_member
 
-    event = make_event()
-    bot, pool = make_bot(send_message=AsyncMock(side_effect=forbidden())), object()
+    member = GMember()
+    app = make_app(send_msg=AsyncMock(side_effect=ForbiddenError(403, "blocked")))
+    pool = object()
     with (
         patch("handlers_membership.register_group", AsyncMock(return_value="created")),
         patch("handlers_membership.get_owner_lang", AsyncMock(return_value=None)),
         patch("handlers_membership.set_owner_lang", AsyncMock()),
         patch("handlers_membership.add_pending_greeting", AsyncMock()) as ap,
     ):
-        await on_my_chat_member(event, pool, bot)
+        await on_my_chat_member(pool, app, member, 777)
     ap.assert_called_once_with(pool, 111, -1001, "G")
+
+
+async def test_left_marks_inactive():
+    from handlers_membership import on_my_chat_member
+
+    member = GMember(old="member", new="left")
+    app, pool = make_app(), object()
+    with patch("handlers_membership.mark_group_inactive", AsyncMock()) as mi:
+        await on_my_chat_member(pool, app, member, 777)
+    mi.assert_called_once_with(pool, -1001)
 
 
 async def test_flush_pending_delivers_and_clears():
     from handlers_membership import flush_pending
 
-    bot, pool = make_bot(), object()
+    app, pool = make_app(), object()
     with (
         patch(
             "handlers_membership.list_pending_greetings",
@@ -66,6 +92,6 @@ async def test_flush_pending_delivers_and_clears():
         patch("handlers_membership.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_membership.delete_pending_greeting", AsyncMock()) as dp,
     ):
-        await flush_pending(pool, bot, 111)
-    bot.send_message.assert_called_once()
+        await flush_pending(pool, app, 111)
+    app.send_msg.assert_called_once()
     dp.assert_called_once_with(pool, 111, -1001)

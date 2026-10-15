@@ -1,10 +1,7 @@
-"""Private-chat router: /start, group list, per-group config, stats, language."""
-
-from aiogram import F, Router
-from aiogram.filters import Command
-from aiogram.types import CallbackQuery, Message
+"""Private-chat handlers: /start, group list, per-group config, stats, language."""
 
 import texts
+from adapters import is_start_command
 from db import (
     format_stats,
     get_blocked,
@@ -21,19 +18,21 @@ from db import (
     whitelist_count,
 )
 from i18n import _, activate_owner_lang, detect_language, set_lang
-from keyboards import back_to_group_kb, group_menu_kb, groups_kb, types_kb
-
-router = Router()
-router.message.filter(F.chat.type == "private")
-router.callback_query.filter(F.message.chat.type == "private")
+from keyboards import (
+    back_to_group_kb,
+    confirm_reset_kb,
+    group_menu_kb,
+    groups_kb,
+    types_kb,
+)
 
 
 async def _owner_only(pool, chat_id: int, user_id: int) -> bool:
     return await get_owner(pool, chat_id) == user_id
 
 
-async def _deny(cb: CallbackQuery) -> None:
-    await cb.answer(texts.NOT_OWNER(), show_alert=True)
+async def _deny(app, cb) -> None:
+    await cb.answer(texts.NOT_OWNER(), alert=True)
 
 
 async def _group_title(pool, owner_id: int, chat_id: int) -> str:
@@ -41,10 +40,6 @@ async def _group_title(pool, owner_id: int, chat_id: int) -> str:
         if cid == chat_id:
             return title or str(chat_id)
     return str(chat_id)
-
-
-def _parse_chat(data: str) -> int:
-    return int(data.split(":", 1)[1])
 
 
 def _lang_toggle(lang: str) -> tuple[str, str]:
@@ -67,150 +62,129 @@ async def _start_screen(pool, owner_id: int, tg_code: str | None):
     return text, groups_kb(groups, lang_toggle=_lang_toggle(lang))
 
 
-@router.message(Command("start"))
-async def on_start(message: Message, pool) -> None:
-    owner_id = message.from_user.id
+async def on_start(pool, app, msg) -> None:
+    owner_id = msg.from_id
     try:
         from handlers_membership import flush_pending
 
-        await flush_pending(pool, message.bot, owner_id)
+        await flush_pending(pool, app, owner_id)
     except ImportError:
         pass
-    text, kb = await _start_screen(
-        pool, owner_id, getattr(message.from_user, "language_code", None)
-    )
-    await message.answer(text, reply_markup=kb)
+    sender = msg.get("from") or {}
+    text, kb = await _start_screen(pool, owner_id, sender.get("language_code"))
+    await app.send_msg(msg.chat_id, text, kbd=kb)
 
 
-@router.callback_query(F.data == "back_groups")
-async def on_back_groups(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
-    text, kb = await _start_screen(
-        pool, cb.from_user.id, getattr(cb.from_user, "language_code", None)
-    )
-    await cb.message.edit_text(text, reply_markup=kb)
+async def on_back_groups(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    text, kb = await _start_screen(pool, cb.from_id, getattr(cb, "language_code", None))
+    await app.edit_msg(cb.chat_id, cb.msg_id, text, kbd=kb)
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("lang:"))
-async def on_language(cb: CallbackQuery, pool) -> None:
+def _tg_user(cb):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(id=cb.from_id, language_code=getattr(cb, "language_code", None))
+
+
+async def on_language(pool, app, cb) -> None:
     lang = cb.data.split(":", 1)[1]
-    await set_owner_lang(pool, cb.from_user.id, lang if lang in ("en", "ru") else "en")
-    text, kb = await _start_screen(
-        pool, cb.from_user.id, getattr(cb.from_user, "language_code", None)
-    )
-    await cb.message.edit_text(text, reply_markup=kb)
+    await set_owner_lang(pool, cb.from_id, lang if lang in ("en", "ru") else "en")
+    text, kb = await _start_screen(pool, cb.from_id, getattr(cb, "language_code", None))
+    await app.edit_msg(cb.chat_id, cb.msg_id, text, kbd=kb)
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("group:"))
-async def on_group_selected(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
-    chat_id = _parse_chat(cb.data)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+async def on_group_selected(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
-    title = await _group_title(pool, cb.from_user.id, chat_id)
-    await cb.message.edit_text(
-        texts.GROUP_TITLE(title),
-        reply_markup=group_menu_kb(
-            chat_id,
-            n_blocked=len(await get_blocked(pool, chat_id)),
-            n_white=await whitelist_count(pool, chat_id),
-            notify_enabled=await get_notify(pool, chat_id),
-        ),
-    )
+    title = await _group_title(pool, cb.from_id, chat_id)
+    text, kb = await render_group_menu(pool, cb.from_id, chat_id)
+    await app.edit_msg(cb.chat_id, cb.msg_id, texts.GROUP_TITLE(title), kbd=kb)
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("types:"))
-async def on_types_list(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
-    chat_id = _parse_chat(cb.data)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+async def _types_screen(pool, owner_id: int, chat_id: int):
+    title = await _group_title(pool, owner_id, chat_id)
+    text = _("Blocked types for {title} (tap to toggle):\n{note}").format(
+        title=title, note=texts.COMMANDS_EXEMPT_NOTE()
+    )
+    return text, types_kb(chat_id, await get_blocked(pool, chat_id))
+
+
+async def on_types_list(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
-    await cb.message.edit_text(
-        _("Blocked types for {title} (tap to toggle):\n{note}").format(
-            title=await _group_title(pool, cb.from_user.id, chat_id),
-            note=texts.COMMANDS_EXEMPT_NOTE(),
-        ),
-        reply_markup=types_kb(chat_id, await get_blocked(pool, chat_id)),
-    )
+    text, kb = await _types_screen(pool, cb.from_id, chat_id)
+    await app.edit_msg(cb.chat_id, cb.msg_id, text, kbd=kb)
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("toggle:"))
-async def on_toggle(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
+async def on_toggle(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
     _prefix, chat_s, ctype = cb.data.split(":", 2)
     chat_id = int(chat_s)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
-    blocked = await toggle_blocked(pool, chat_id, ctype)
-    await cb.message.edit_text(
-        _("Blocked types for {title} (tap to toggle):\n{note}").format(
-            title=await _group_title(pool, cb.from_user.id, chat_id),
-            note=texts.COMMANDS_EXEMPT_NOTE(),
-        ),
-        reply_markup=types_kb(chat_id, blocked),
-    )
+    await toggle_blocked(pool, chat_id, ctype)
+    text, kb = await _types_screen(pool, cb.from_id, chat_id)
+    await app.edit_msg(cb.chat_id, cb.msg_id, text, kbd=kb)
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("stats:"))
-async def on_stats(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
-    chat_id = _parse_chat(cb.data)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+async def on_stats(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
     stats = await get_stats(pool, chat_id)
     body = format_stats(stats)
     if body == format_stats({}):
-        body = texts.STATS_EMPTY(await _group_title(pool, cb.from_user.id, chat_id))
+        body = texts.STATS_EMPTY(await _group_title(pool, cb.from_id, chat_id))
     else:
-        body = f"{await _group_title(pool, cb.from_user.id, chat_id)}: {body}"
-    await cb.message.edit_text(body, reply_markup=back_to_group_kb(chat_id))
+        body = f"{await _group_title(pool, cb.from_id, chat_id)}: {body}"
+    await app.edit_msg(cb.chat_id, cb.msg_id, body, kbd=back_to_group_kb(chat_id))
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("reset_stats:"))
-async def on_reset_stats(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
-    chat_id = _parse_chat(cb.data)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+async def on_reset_stats(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
     await reset_stats(pool, chat_id)
-    await cb.message.edit_text(_("Stats cleared."))
+    await app.edit_msg(cb.chat_id, cb.msg_id, _("Stats cleared."))
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("reset_group:"))
-async def on_reset_group(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
+async def on_reset_group(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
     parts = cb.data.split(":")
     chat_id = int(parts[1])
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
     if len(parts) == 3 and parts[2] == "confirm":
         await reset_group_data(pool, chat_id)
-        await cb.message.edit_text(_("Group data cleared. Everything is allowed again."))
-    else:
-        from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-        builder = InlineKeyboardBuilder()
-        builder.button(
-            text=_("Yes, clear it"), callback_data=f"reset_group:{chat_id}:confirm"
+        await app.edit_msg(
+            cb.chat_id, cb.msg_id, _("Group data cleared. Everything is allowed again.")
         )
-        builder.button(text=_("Cancel"), callback_data=f"group:{chat_id}")
-        builder.adjust(1)
-        await cb.message.edit_text(
+    else:
+        await app.edit_msg(
+            cb.chat_id,
+            cb.msg_id,
             _("Clear blocked types, whitelist and stats for this group?"),
-            reply_markup=builder.as_markup(),
+            kbd=confirm_reset_kb(chat_id),
         )
     await cb.answer()
 
@@ -229,14 +203,70 @@ async def render_group_menu(pool, owner_id: int, chat_id: int):
     )
 
 
-@router.callback_query(F.data.startswith("notify:"))
-async def on_notify(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
-    chat_id = _parse_chat(cb.data)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+async def on_notify(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
     await toggle_notify(pool, chat_id)
-    text, kb = await render_group_menu(pool, cb.from_user.id, chat_id)
-    await cb.message.edit_text(text, reply_markup=kb)
+    text, kb = await render_group_menu(pool, cb.from_id, chat_id)
+    await app.edit_msg(cb.chat_id, cb.msg_id, text, kbd=kb)
     await cb.answer()
+
+
+async def route_private(pool, app, msg) -> None:
+    """Route a private-chat message: users_shared picker result or /start."""
+    if msg.chat_type != "private":
+        return
+    if msg.get("users_shared"):
+        from handlers_whitelist import on_users_shared
+
+        await on_users_shared(pool, app, msg)
+        return
+    if is_start_command(msg.text):
+        await on_start(pool, app, msg)
+
+
+async def route_cb(pool, app, cb) -> None:
+    """Route a callback query by data prefix."""
+    from handlers_whitelist import on_pick_users, on_unwhite, on_white_list
+
+    data = cb.data or ""
+    if data.startswith("group:"):
+        await on_group_selected(pool, app, cb)
+    elif data.startswith("types:"):
+        await on_types_list(pool, app, cb)
+    elif data.startswith("toggle:"):
+        await on_toggle(pool, app, cb)
+    elif data.startswith("white:"):
+        await on_white_list(pool, app, cb)
+    elif data.startswith("pick_users:"):
+        await on_pick_users(pool, app, cb)
+    elif data.startswith("unwhite:"):
+        await on_unwhite(pool, app, cb)
+    elif data.startswith("notify:"):
+        await on_notify(pool, app, cb)
+    elif data.startswith("stats:"):
+        await on_stats(pool, app, cb)
+    elif data.startswith("reset_stats:"):
+        await on_reset_stats(pool, app, cb)
+    elif data.startswith("reset_group:"):
+        await on_reset_group(pool, app, cb)
+    elif data == "back_groups":
+        await on_back_groups(pool, app, cb)
+    elif data.startswith("lang:"):
+        await on_language(pool, app, cb)
+    else:
+        await cb.answer()
+
+
+def register(app, pool) -> None:
+    async def _msg(msg):
+        await route_private(pool, app, msg)
+
+    async def _cb(cb):
+        await route_cb(pool, app, cb)
+
+    app.on_msg(_msg)
+    app.on_cb(_cb)

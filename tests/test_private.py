@@ -1,61 +1,117 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 import texts
 
 
-def make_callback(data, user_id):
-    return SimpleNamespace(
-        data=data,
-        from_user=SimpleNamespace(id=user_id, language_code="en"),
-        message=SimpleNamespace(
-            chat=SimpleNamespace(id=999, type="private"),
-            edit_text=AsyncMock(),
-        ),
-        answer=AsyncMock(),
+class GMsg:
+    def __init__(self, message):
+        self._message = message
+        self.msg_id = message.get("message_id")
+        self.chat_id = (message.get("chat") or {}).get("id")
+        self.chat_type = (message.get("chat") or {}).get("type")
+        frm = message.get("from")
+        self.from_id = frm.get("id") if frm else None
+        self.text = message.get("text") or ""
+
+    def get(self, key, default=None):
+        return self._message.get(key, default)
+
+
+class GCb:
+    def __init__(self, data, user_id, chat_id=999, msg_id=10):
+        self.data = data
+        self.from_id = user_id
+        self.chat_id = chat_id
+        self.msg_id = msg_id
+        self.answer = AsyncMock()
+
+
+def make_msg(text="/start", user_id=111, lang="en"):
+    return GMsg(
+        {
+            "message_id": 1,
+            "chat": {"id": 999, "type": "private"},
+            "from": {"id": user_id, "language_code": lang},
+            "text": text,
+        }
     )
+
+
+def make_app():
+    return SimpleNamespace(
+        send_msg=AsyncMock(), delete_msg=AsyncMock(), edit_msg=AsyncMock()
+    )
+
+
+async def test_start_registers_language_and_lists_groups():
+    from handlers_private import on_start
+
+    msg, app, pool = make_msg(), make_app(), object()
+    with (
+        patch("handlers_membership.flush_pending", AsyncMock()),
+        patch("handlers_private.get_owner_lang", AsyncMock(return_value=None)),
+        patch("handlers_private.set_owner_lang", AsyncMock()) as sl,
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
+    ):
+        await on_start(pool, app, msg)
+    sl.assert_called_once_with(pool, 111, "en")
+    app.send_msg.assert_called_once()
+    args, kw = app.send_msg.call_args
+    assert args[0] == 999 and "G" not in args[1]
+    assert kw["kbd"]["inline_keyboard"][0][0]["callback_data"] == "group:-1001"
+
+
+async def test_start_detects_russian():
+    from handlers_private import on_start
+
+    msg, app, pool = make_msg(lang="ru"), make_app(), object()
+    with (
+        patch("handlers_membership.flush_pending", AsyncMock()),
+        patch("handlers_private.get_owner_lang", AsyncMock(return_value=None)),
+        patch("handlers_private.set_owner_lang", AsyncMock()) as sl,
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[])),
+    ):
+        await on_start(pool, app, msg)
+    sl.assert_called_once_with(pool, 111, "ru")
 
 
 async def test_non_owner_tap_changes_nothing():
     from handlers_private import on_group_selected
 
-    cb = make_callback("group:-1001", 555)
-    pool = object()
+    cb, app, pool = GCb("group:-1001", 555), make_app(), object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
         patch("db.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_private.get_blocked") as gb,
         patch("handlers_private.whitelist_count") as wc,
     ):
-        await on_group_selected(cb, pool)
+        await on_group_selected(pool, app, cb)
     gb.assert_not_called()
     wc.assert_not_called()
-    cb.answer.assert_called_once_with(texts.NOT_OWNER(), show_alert=True)
+    cb.answer.assert_called_once_with(texts.NOT_OWNER(), alert=True)
 
 
 async def test_toggle_roundtrip_updates_blocked():
     from handlers_private import on_toggle
 
-    cb = make_callback("toggle:-1001:photo", 111)
-    pool = object()
+    cb, app, pool = GCb("toggle:-1001:photo", 111), make_app(), object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
         patch("db.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_private.toggle_blocked", AsyncMock(return_value={"photo"})) as tb,
+        patch("handlers_private.get_blocked", AsyncMock(return_value={"photo"})),
         patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
     ):
-        await on_toggle(cb, pool)
+        await on_toggle(pool, app, cb)
     tb.assert_called_once_with(pool, -1001, "photo")
-    assert cb.message.edit_text.await_count == 1
+    assert app.edit_msg.await_count == 1
 
 
 async def test_notify_toggle_rerenders_menu():
     from handlers_private import on_notify
 
-    cb = make_callback("notify:-1001", 111)
-    pool = object()
+    cb, app, pool = GCb("notify:-1001", 111), make_app(), object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
         patch("db.get_owner_lang", AsyncMock(return_value="en")),
@@ -65,43 +121,74 @@ async def test_notify_toggle_rerenders_menu():
         patch("handlers_private.whitelist_count", AsyncMock(return_value=0)),
         patch("handlers_private.get_notify", AsyncMock(return_value=True)),
     ):
-        await on_notify(cb, pool)
+        await on_notify(pool, app, cb)
     tn.assert_called_once_with(pool, -1001)
-    text = cb.message.edit_text.call_args[0][0]
-    assert "G" in text
-    kb_text = " ".join(
-        b.text for row in cb.message.edit_text.call_args[1]["reply_markup"].inline_keyboard for b in row
-    )
-    assert "Notifications: ON" in kb_text
+    args, kw = app.edit_msg.call_args
+    assert args[0] == 999 and "G" in args[2]
+    flat = " ".join(b["text"] for row in kw["kbd"]["inline_keyboard"] for b in row)
+    assert "Notifications: ON" in flat
 
 
 async def test_language_switch_stores_and_rerenders():
     from handlers_private import on_language
 
-    cb = make_callback("lang:ru", 111)
-    pool = object()
+    cb, app, pool = GCb("lang:ru", 111), make_app(), object()
     with (
         patch("handlers_private.set_owner_lang", AsyncMock()) as sl,
         patch("handlers_private.get_owner_lang", AsyncMock(return_value="ru")),
         patch("handlers_private.owner_groups", AsyncMock(return_value=[])),
     ):
-        await on_language(cb, pool)
+        await on_language(pool, app, cb)
     sl.assert_called_once_with(pool, 111, "ru")
-    assert cb.message.edit_text.await_count == 1
+    assert app.edit_msg.await_count == 1
 
 
 async def test_stats_has_back_button():
     from handlers_private import on_stats
 
-    cb = make_callback("stats:-1001", 111)
-    pool = object()
+    cb, app, pool = GCb("stats:-1001", 111), make_app(), object()
     with (
         patch("handlers_private.get_owner", AsyncMock(return_value=111)),
         patch("db.get_owner_lang", AsyncMock(return_value="en")),
         patch("handlers_private.get_stats", AsyncMock(return_value={})),
         patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
     ):
-        await on_stats(cb, pool)
-    kb = cb.message.edit_text.call_args[1]["reply_markup"]
-    datas = [b.callback_data for row in kb.inline_keyboard for b in row]
+        await on_stats(pool, app, cb)
+    kb = app.edit_msg.call_args[1]["kbd"]
+    datas = [b["callback_data"] for row in kb["inline_keyboard"] for b in row]
     assert "group:-1001" in datas
+
+
+async def test_private_router_routes_start_and_shared():
+    from handlers_private import route_private
+
+    app, pool = make_app(), object()
+    with (
+        patch("handlers_private.on_start", AsyncMock()) as st,
+        patch("handlers_whitelist.on_users_shared", AsyncMock()) as sh,
+    ):
+        await route_private(pool, app, make_msg("/start"))
+        st.assert_called_once()
+        sh.assert_not_called()
+        st.reset_mock()
+        shared = make_msg("")
+        shared._message["users_shared"] = {"request_id": 1, "users": []}
+        await route_private(pool, app, shared)
+        sh.assert_called_once()
+        st.assert_not_called()
+
+
+async def test_private_router_ignores_groups_and_other_text():
+    from handlers_private import route_private
+
+    app, pool = make_app(), object()
+    grp = make_msg("hello")
+    grp.chat_type = "supergroup"
+    with (
+        patch("handlers_private.on_start", AsyncMock()) as st,
+        patch("handlers_whitelist.on_users_shared", AsyncMock()) as sh,
+    ):
+        await route_private(pool, app, grp)
+        await route_private(pool, app, make_msg("just chatting"))
+    st.assert_not_called()
+    sh.assert_not_called()

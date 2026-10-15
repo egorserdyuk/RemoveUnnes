@@ -1,1 +1,4 @@
 goygram==0.8.25
+asyncpg==0.32.0
+pytest
+pytest-asyncio

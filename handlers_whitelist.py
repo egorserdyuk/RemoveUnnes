@@ -1,23 +1,14 @@
 """Whitelist picker flow (private chat only)."""
 
 import itertools
-
-from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from types import SimpleNamespace
 
 import texts
+from adapters import shared_users
 from db import add_whitelist, get_owner, get_whitelist, remove_whitelist
 from handlers_private import _deny, render_group_menu
 from i18n import _, activate_owner_lang, n
 from keyboards import picker_kb, remove_reply_kb, whitelist_kb
-
-router = Router()
-router.message.filter(F.chat.type == "private")
-router.callback_query.filter(F.message.chat.type == "private")
-
-
-async def _owner_only(pool, chat_id: int, user_id: int) -> bool:
-    return await get_owner(pool, chat_id) == user_id
 
 # request_id (per picker message) -> group chat_id. Single polling process.
 pending_pick: dict[int, int] = {}
@@ -28,92 +19,94 @@ def _next_request_id() -> int:
     return next(_request_ids) % 0x7FFFFFFF or 1
 
 
-@router.callback_query(F.data.startswith("white:"))
-async def on_white_list(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
+def _tg_user(msg) -> SimpleNamespace:
+    return SimpleNamespace(id=msg.from_id, language_code=getattr(msg, "language_code", None))
+
+
+async def _owner_only(pool, chat_id: int, user_id: int) -> bool:
+    return await get_owner(pool, chat_id) == user_id
+
+
+async def on_white_list(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
     chat_id = int(cb.data.split(":", 1)[1])
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
-    await cb.message.edit_text(
+    await app.edit_msg(
+        cb.chat_id,
+        cb.msg_id,
         _("Whitelisted users (bypass all blocks):"),
-        reply_markup=whitelist_kb(chat_id, await get_whitelist(pool, chat_id)),
+        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id)),
     )
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("pick_users:"))
-async def on_pick_users(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
+async def on_pick_users(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
     chat_id = int(cb.data.split(":", 1)[1])
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
     request_id = _next_request_id()
     pending_pick[request_id] = chat_id
-    await cb.message.answer(
+    await app.send_msg(
+        cb.from_id,
         _("Tap the button and pick users (up to 10 at once — repeat to add more):"),
-        reply_markup=picker_kb(request_id),
+        kbd=picker_kb(request_id),
     )
     await cb.answer()
 
 
-@router.message(F.users_shared)
-async def on_users_shared(message: Message, pool) -> None:
-    await activate_owner_lang(pool, message.from_user)
-    shared = message.users_shared
-    chat_id = pending_pick.get(shared.request_id)
+async def on_users_shared(pool, app, msg) -> None:
+    await activate_owner_lang(pool, _tg_user(msg))
+    request_id, rows = shared_users(msg)
+    chat_id = pending_pick.get(request_id)
     if chat_id is None:
-        await message.answer(
-            _("I lost track of which group this was for — tap '+ Add via picker' again.")
+        await app.send_msg(
+            msg.chat_id,
+            _("I lost track of which group this was for — tap '+ Add via picker' again."),
         )
         return
-    if not await _owner_only(pool, chat_id, message.from_user.id):
-        await message.answer(texts.NOT_OWNER())
+    if not await _owner_only(pool, chat_id, msg.from_id):
+        await app.send_msg(msg.chat_id, texts.NOT_OWNER())
         return
-    rows: list[tuple[int, str | None, str | None]] = []
-    for user in shared.users:
-        uid = getattr(user, "user_id", None)
-        uname = getattr(user, "username", None)
-        first = getattr(user, "first_name", None) or ""
-        last = getattr(user, "last_name", None) or ""
-        display = f"{first} {last}".strip() or None
-        rows.append((uid, uname, display))
     await add_whitelist(pool, chat_id, rows)
-    pending_pick.pop(shared.request_id, None)
-    await message.answer(
+    pending_pick.pop(request_id, None)
+    await app.send_msg(
+        msg.chat_id,
         n(
             "Added {n} user to the whitelist.",
             "Added {n} users to the whitelist.",
             len(rows),
         ).format(n=len(rows)),
-        reply_markup=remove_reply_kb(),
+        kbd=remove_reply_kb(),
     )
 
 
-@router.callback_query(F.data.startswith("unwhite:"))
-async def on_unwhite(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
+async def on_unwhite(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
     _prefix, chat_s, user_s = cb.data.split(":", 2)
     chat_id, user_id = int(chat_s), int(user_s)
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
     await remove_whitelist(pool, chat_id, user_id)
-    await cb.message.edit_text(
+    await app.edit_msg(
+        cb.chat_id,
+        cb.msg_id,
         _("Whitelisted users (bypass all blocks):"),
-        reply_markup=whitelist_kb(chat_id, await get_whitelist(pool, chat_id)),
+        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id)),
     )
     await cb.answer()
 
 
-@router.callback_query(F.data.startswith("back_group:"))
-async def on_back_group(cb: CallbackQuery, pool) -> None:
-    await activate_owner_lang(pool, cb.from_user)
+async def on_back_group(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
     chat_id = int(cb.data.split(":", 1)[1])
-    if not await _owner_only(pool, chat_id, cb.from_user.id):
-        await _deny(cb)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
         return
-    text, kb = await render_group_menu(pool, cb.from_user.id, chat_id)
-    await cb.message.edit_text(text, reply_markup=kb)
+    text, kb = await render_group_menu(pool, cb.from_id, chat_id)
+    await app.edit_msg(cb.chat_id, cb.msg_id, text, kbd=kb)
     await cb.answer()
