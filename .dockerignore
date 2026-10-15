@@ -16,5 +16,4 @@ env/
 docker-compose.yml
 Dockerfile
 .dockerignore
-locales/messages.pot
 requirements_dev.txt

@@ -37,22 +37,16 @@ POSTGRES_DSN_TEST=postgresql://remover:remover@localhost:5432/remover python -m 
 
 ## Languages (i18n)
 
-UI copy uses [Babel](https://babel.pocoo.org/) message catalogs (`locales/`).
-English msgids are the source; Russian entries are currently empty
-placeholders (the bot falls back to English).
+UI copy is English-first with a built-in Russian dictionary — no Babel,
+no `.po`/`.mo` files, no compile step.
 
-Workflow after changing user-visible strings:
+- English strings are the msgids, used inline throughout the code.
+- Russian translations live in `i18n_ru.py` (`RU_STRINGS` for plain strings,
+  `RU_PLURALS` for singular/plural pairs with full 3-form Russian plurals).
+- Missing keys fall back to English at runtime, so a partial translation
+  never breaks the bot.
+- Each owner picks a language with the 🌐 button in the private chat
+  (auto-detected from their Telegram `language_code` on first `/start`).
 
-```bash
-.venv/bin/pybabel extract -F babel.cfg \
-  --keyword=_ --keyword=n:1,2 --keyword=msgid:1 --keyword=msgid_plural:1,2 \
-  -o locales/messages.pot bot.py config.py db.py classify.py keyboards.py \
-  texts.py notices.py handlers_private.py handlers_group.py \
-  handlers_membership.py handlers_whitelist.py i18n.py
-.venv/bin/pybabel update -i locales/messages.pot -d locales
-# fill in msgstr in locales/ru/LC_MESSAGES/messages.po, then:
-.venv/bin/pybabel compile -d locales
-```
-
-Commit the updated `.po` and compiled `.mo` files (the Docker image
-needs the `.mo` files at runtime).
+To add or fix Russian copy, edit `i18n_ru.py` directly and restart.
+To add a third language, add its dict plus locale plumbing in `i18n.py`.

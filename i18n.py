@@ -1,20 +1,11 @@
-import gettext
 from contextvars import ContextVar
-from pathlib import Path
+
+from i18n_ru import RU_PLURALS, RU_STRINGS
 
 SUPPORTED = ("en", "ru")
 DEFAULT = "en"
-DOMAIN = "messages"
-LOCALES_DIR = Path(__file__).parent / "locales"
 
 _current: ContextVar[str] = ContextVar("locale", default=DEFAULT)
-
-_translations: dict[str, gettext.NullTranslations] = {}
-for _lang in SUPPORTED:
-    try:
-        _translations[_lang] = gettext.translation(DOMAIN, localedir=str(LOCALES_DIR), languages=[_lang])
-    except OSError:
-        _translations[_lang] = gettext.NullTranslations()
 
 
 def set_lang(lang: str) -> None:
@@ -33,29 +24,25 @@ def detect_language(tg_code: str | None) -> str:
 
 
 def _(msgid: str) -> str:
-    return _translations[get_lang()].gettext(msgid)
+    if get_lang() == "ru":
+        return RU_STRINGS.get(msgid, msgid)
+    return msgid
+
+
+def _ru_plural_index(num: int) -> int:
+    if num % 10 == 1 and num % 100 != 11:
+        return 0
+    if 2 <= num % 10 <= 4 and (num % 100 < 10 or num % 100 >= 20):
+        return 1
+    return 2
 
 
 def n(singular: str, plural: str, num: int) -> str:
-    return _translations[get_lang()].ngettext(singular, plural, num)
-
-
-def msgid(s: str) -> str:
-    """Identity marker so Babel extracts strings that are translated dynamically.
-
-    Use for English source strings stored in lists/dicts and passed to `_()`
-    via variables at runtime (pybabel only extracts string literals).
-    Returns `s` unchanged.
-    """  # noqa: D401
-    return s
-
-
-def msgid_plural(singular: str, plural: str) -> tuple[str, str]:
-    """Identity marker so Babel extracts (singular, plural) pairs used via `n()`.
-
-    Returns the pair unchanged; pass it to `n()` at runtime.
-    """
-    return singular, plural
+    if get_lang() == "ru":
+        forms = RU_PLURALS.get((singular, plural))
+        if forms is not None:
+            return forms[_ru_plural_index(num)]
+    return singular if num == 1 else plural
 
 
 async def activate_owner_lang(pool, tg_user) -> str:

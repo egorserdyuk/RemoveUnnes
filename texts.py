@@ -1,4 +1,4 @@
-"""English msgids for all user-visible copy (translated via Babel catalogs)."""
+"""English msgids for all user-visible copy (translated via i18n_ru.py)."""
 
 from i18n import _
 
