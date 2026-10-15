@@ -27,7 +27,7 @@ async def main() -> None:
     handlers_group.register(app, pool, bot_id)
     handlers_membership.register(app, pool, bot_id)
     handlers_private.register(app, pool)
-    app.run()
+    await app.run()
 
 
 if __name__ == "__main__":
