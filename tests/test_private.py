@@ -286,3 +286,23 @@ async def test_pending_ignores_non_text_message():
         gl.assert_not_called()
         assert _pending_limits.get(111) == (-1001, "voice", "dur")
         app.send_msg.assert_not_called()
+
+
+async def test_private_router_ignores_pending_text_in_group():
+    from handlers_private import _pending_limits, route_private
+
+    _pending_limits.clear()
+    _pending_limits[111] = (-1001, "voice", "dur")
+    app, pool = make_app(), object()
+    grp = make_msg("1m", user_id=111)
+    grp.chat_type = "supergroup"
+    grp.chat_id = -1001
+    with (
+        patch("handlers_private.get_limit", AsyncMock()) as gl,
+        patch("handlers_private.set_limit", AsyncMock()) as sl,
+    ):
+        await route_private(pool, app, grp)
+    sl.assert_not_called()
+    gl.assert_not_called()
+    app.send_msg.assert_not_called()
+    assert _pending_limits.get(111) == (-1001, "voice", "dur")
