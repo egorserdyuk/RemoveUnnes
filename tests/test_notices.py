@@ -9,18 +9,31 @@ def first(choices):
 def test_all_templates_render_with_user_and_type():
     from notices import NOTICE_TEMPLATES_COOLDOWN, NOTICE_TEMPLATES_DURATION
 
-    for tpl in NOTICE_TEMPLATES + NOTICE_TEMPLATES_DURATION + NOTICE_TEMPLATES_COOLDOWN:
+    for tpl in NOTICE_TEMPLATES:
         assert "{user}" in tpl and "{type}" in tpl
         text = tpl.format(user="@bob", insult="rascal", type="voice message")
         assert "@bob" in text and "voice message" in text
+    for pool in list(NOTICE_TEMPLATES_DURATION.values()) + list(
+        NOTICE_TEMPLATES_COOLDOWN.values()
+    ):
+        for tpl in pool:
+            assert "{user}" in tpl
+            text = tpl.format(user="@bob", insult="rascal", type="voice message")
+            assert "@bob" in text
 
 
 def test_all_ru_replies_render_with_user():
     from notices import RUSSIAN_REPLIES, RUSSIAN_REPLIES_COOLDOWN, RUSSIAN_REPLIES_DURATION
 
-    for tpl in RUSSIAN_REPLIES + RUSSIAN_REPLIES_DURATION + RUSSIAN_REPLIES_COOLDOWN:
-        assert "{user}" in tpl
-        assert "@bob" in tpl.format(user="@bob")
+    pools = (
+        [RUSSIAN_REPLIES]
+        + list(RUSSIAN_REPLIES_DURATION.values())
+        + list(RUSSIAN_REPLIES_COOLDOWN.values())
+    )
+    for pool in pools:
+        for tpl in pool:
+            assert "{user}" in tpl
+            assert "@bob" in tpl.format(user="@bob")
 
 
 def test_render_notice_contains_user_type_and_known_insult():
@@ -92,18 +105,21 @@ def test_render_notice_selects_scenario_pool(monkeypatch):
     import notices
 
     tpl = "Slow down, {user} — one {type} at a time."
-    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_COOLDOWN", [tpl])
+    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_COOLDOWN", {"text": [tpl]})
     text = render_notice("@bob", "text", reason="cooldown", rng=first)
     assert text == tpl.format(user="@bob", type="text message")
     generic = render_notice("@bob", "text", rng=first)
     assert generic != text
+    assert render_notice("@bob", "photo", reason="cooldown", rng=first) == render_notice(
+        "@bob", "photo", rng=first
+    )
 
 
 def test_render_notice_falls_back_to_generic_pool(monkeypatch):
     import notices
 
-    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_DURATION", [])
-    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_COOLDOWN", [])
+    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_DURATION", {})
+    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_COOLDOWN", {})
     generic = render_notice("@bob", "voice", rng=first)
     assert render_notice("@bob", "voice", reason="duration", rng=first) == generic
     assert render_notice("@bob", "voice", reason="cooldown", rng=first) == generic
@@ -113,10 +129,15 @@ def test_render_notice_ru_selects_scenario_pool(monkeypatch):
     import notices
     from i18n import set_lang
 
-    monkeypatch.setattr(notices, "RUSSIAN_REPLIES_COOLDOWN", ["{user}, помедленнее!"])
+    monkeypatch.setattr(
+        notices, "RUSSIAN_REPLIES_COOLDOWN", {"text": ["{user}, помедленнее!"]}
+    )
     set_lang("ru")
     try:
         assert render_notice("@bob", "text", reason="cooldown", rng=first) == "@bob, помедленнее!"
         assert render_notice("@bob", "text", rng=first) != "@bob, помедленнее!"
+        assert render_notice("@bob", "photo", reason="cooldown", rng=first) == render_notice(
+            "@bob", "photo", rng=first
+        )
     finally:
         set_lang("en")

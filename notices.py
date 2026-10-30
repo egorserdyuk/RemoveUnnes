@@ -36,18 +36,35 @@ NOTICE_TEMPLATES: list[str] = [
     "Breaking news: {user}'s {type} didn't survive. What a {insult}.",
 ]
 
-# Optional per-scenario pools. Empty (default) falls back to NOTICE_TEMPLATES,
-# so adding replies is opt-in per scenario. Same placeholders as above.
-NOTICE_TEMPLATES_DURATION: list[str] = [
-    "Too long, {user} — that {type} didn't fit the limit. Trim it.",
-    "{user} sent a {type} longer than allowed. Deleted, no refund.",
-    "That {type} from {user} was over the duration cap. Gone.",
-]
-NOTICE_TEMPLATES_COOLDOWN: list[str] = [
-    "Slow down, {user} — one {type} at a time. Cooling off.",
-    "{user} is spamming {type}. This one didn't make it.",
-    "Patience, {user}. That {type} arrived too soon after the last one.",
-]
+# Optional per-scenario, per-type pools. Dict maps content type -> templates.
+# A type missing here (or with an empty list) falls back to NOTICE_TEMPLATES,
+# so replies are opt-in per scenario and type. Placeholders: {user}, {type},
+# {insult} ({type} may be omitted when the text names the type itself).
+NOTICE_TEMPLATES_DURATION: dict[str, list[str]] = {
+    "voice": [
+        "Too long voice message, {insult}! Keep it short, {user}.",
+    ],
+    "video_note": [
+        "Too long video note, {insult}! Trim it, {user}.",
+    ],
+    "video": [
+        "Too long video, {insult}! {user}, keep it brief.",
+    ],
+    "audio": [
+        "Too long audio file, {insult}! Shorter, {user}.",
+    ],
+}
+NOTICE_TEMPLATES_COOLDOWN: dict[str, list[str]] = {
+    "text": [
+        "Too many text messages, {insult}! Slow down, {user}.",
+    ],
+    "voice": [
+        "Too many voice messages, {insult}! One at a time, {user}.",
+    ],
+    "video_note": [
+        "Too many video notes, {insult}! Patience, {user}.",
+    ],
+}
 
 CONTENT_LABELS: dict[str, str] = {
     "story_forward": "forwarded story",
@@ -115,18 +132,33 @@ RUSSIAN_REPLIES: list[str] = [
     "{user}, тебе рот для чего нужен? По назначению используй",
 ]
 
-# Optional per-scenario RU pools. Empty (default) falls back to RUSSIAN_REPLIES.
-# Only {user} is substituted here.
-RUSSIAN_REPLIES_DURATION: list[str] = [
-    "{user}, слишком длинное. Никто это слушать не будет, удалил.",
-    "{user}, краткость — сестра таланта. Учись.",
-    "{user} записал эпопею вместо голосового. Сокращай.",
-]
-RUSSIAN_REPLIES_COOLDOWN: list[str] = [
-    "{user}, помедленнее! Одно сообщение за раз.",
-    "{user}, ты спамишь. Подожди немного.",
-    "{user}, терпение. Прошло слишком мало времени с прошлого раза.",
-]
+# Optional per-scenario, per-type RU pools. Only {user} is substituted here.
+# Missing/empty entries fall back to RUSSIAN_REPLIES.
+RUSSIAN_REPLIES_DURATION: dict[str, list[str]] = {
+    "voice": [
+        "{user}, слишком длинное голосовое. Короче!",
+    ],
+    "video_note": [
+        "{user}, слишком длинный кружок. Короче!",
+    ],
+    "video": [
+        "{user}, слишком длинное видео. Сокращай.",
+    ],
+    "audio": [
+        "{user}, слишком длинное аудио. Короче.",
+    ],
+}
+RUSSIAN_REPLIES_COOLDOWN: dict[str, list[str]] = {
+    "text": [
+        "{user}, хватит спамить сообщениями. Тормозни.",
+    ],
+    "voice": [
+        "{user}, хватит слать голосовые одно за другим.",
+    ],
+    "video_note": [
+        "{user}, кружки пачками не катят. Подожди.",
+    ],
+}
 
 # Common aliases for language-specific Russian replies.
 RUSSIAN_TEMPLATES = RUSSIAN_REPLIES
@@ -140,20 +172,28 @@ RUSSIAN_NOTICES = RUSSIAN_REPLIES
 MAX_UNIQUE_ATTEMPTS = 10
 
 
-def _scenario_templates(reason: str | None) -> list[str]:
-    """Scenario pool if the owner filled it, else the generic pool."""
-    if reason == "duration" and NOTICE_TEMPLATES_DURATION:
-        return NOTICE_TEMPLATES_DURATION
-    if reason == "cooldown" and NOTICE_TEMPLATES_COOLDOWN:
-        return NOTICE_TEMPLATES_COOLDOWN
+def _scenario_templates(reason: str | None, ctype: str) -> list[str]:
+    """Per-type scenario pool if the owner filled it, else the generic pool."""
+    if reason == "duration":
+        pool = NOTICE_TEMPLATES_DURATION.get(ctype)
+        if pool:
+            return pool
+    if reason == "cooldown":
+        pool = NOTICE_TEMPLATES_COOLDOWN.get(ctype)
+        if pool:
+            return pool
     return NOTICE_TEMPLATES
 
 
-def _scenario_ru_replies(reason: str | None) -> list[str]:
-    if reason == "duration" and RUSSIAN_REPLIES_DURATION:
-        return RUSSIAN_REPLIES_DURATION
-    if reason == "cooldown" and RUSSIAN_REPLIES_COOLDOWN:
-        return RUSSIAN_REPLIES_COOLDOWN
+def _scenario_ru_replies(reason: str | None, ctype: str) -> list[str]:
+    if reason == "duration":
+        pool = RUSSIAN_REPLIES_DURATION.get(ctype)
+        if pool:
+            return pool
+    if reason == "cooldown":
+        pool = RUSSIAN_REPLIES_COOLDOWN.get(ctype)
+        if pool:
+            return pool
     return RUSSIAN_REPLIES
 
 
@@ -163,12 +203,13 @@ def render_notice(
     """Pick a random template + insult and fill in user and type label.
 
     `reason` is one of "blocked" (default), "duration", "cooldown".
-    A scenario pool is used only when the owner filled it; otherwise the
-    generic pool applies, so per-scenario replies are opt-in.
+    A per-type scenario pool is used only when the owner filled it for that
+    content type; otherwise the generic pool applies, so per-scenario,
+    per-type replies are opt-in.
     """
     if get_lang() == "ru":
-        return rng(_scenario_ru_replies(reason)).format(user=user)
-    templates = _scenario_templates(reason)
+        return rng(_scenario_ru_replies(reason, ctype)).format(user=user)
+    templates = _scenario_templates(reason, ctype)
     return _(rng(templates)).format(
         user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
     )
