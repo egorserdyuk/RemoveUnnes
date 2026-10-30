@@ -53,7 +53,7 @@ async def _notify_no_rights(pool, app, chat_id: int, title: str) -> None:
         pass
 
 
-async def _remove(pool, app, msg, fields, chat_id: int, ctype: str) -> None:
+async def _remove(pool, app, msg, fields, chat_id: int, ctype: str, reason: str) -> None:
     """Delete an offending message, count it, optionally notify the owner."""
     try:
         await app.delete_msg(chat_id, msg.msg_id)
@@ -65,7 +65,7 @@ async def _remove(pool, app, msg, fields, chat_id: int, ctype: str) -> None:
         owner = await get_owner(pool, chat_id)
         lang = await get_owner_lang(pool, owner) if owner is not None else None
         set_lang(lang or "en")
-        await _send_notice(pool, app, chat_id, format_mention(fields.from_user), ctype)
+        await _send_notice(pool, app, chat_id, format_mention(fields.from_user), ctype, reason)
 
 
 async def _handle(pool, app, msg, bot_id: int) -> None:
@@ -83,7 +83,7 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
     if sender_id is not None and await is_whitelisted(pool, chat_id, sender_id):
         return
     if ctype in await get_blocked(pool, chat_id):
-        await _remove(pool, app, msg, fields, chat_id, ctype)
+        await _remove(pool, app, msg, fields, chat_id, ctype, "blocked")
         return
     max_dur, cool = await get_limit(pool, chat_id, ctype)
     # Scenario: duration cap. Categorized separately from the cooldown window,
@@ -91,22 +91,22 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
     # bucket — including other types' (e.g. text). Failed messages here
     # neither read nor write cooldown state.
     if not is_duration_ok(get_duration(fields), max_dur):
-        await _remove(pool, app, msg, fields, chat_id, ctype)
+        await _remove(pool, app, msg, fields, chat_id, ctype, "duration")
         return
     # Scenario: per-user per-type cooldown window.
     now = _now()
     key = (chat_id, sender_id, ctype)
     if not is_cooldown_ok(now, _cooldown_last.get(key), cool):
-        await _remove(pool, app, msg, fields, chat_id, ctype)
+        await _remove(pool, app, msg, fields, chat_id, ctype, "cooldown")
         return
     if cool is not None and sender_id is not None:
         _cooldown_last[key] = now
 
 
-async def _send_notice(pool, app, chat_id: int, user: str, ctype: str) -> None:
+async def _send_notice(pool, app, chat_id: int, user: str, ctype: str, reason: str) -> None:
     """Post a notice whose text doesn't repeat the previous bot replies."""
     previous = _recent_notice_texts.get(chat_id, [])
-    text = render_unique_notice(user, ctype, previous)
+    text = render_unique_notice(user, ctype, previous, reason=reason)
     try:
         await app.send_msg(chat_id, text)
     except (ForbiddenError, BadRequestError):

@@ -36,6 +36,11 @@ NOTICE_TEMPLATES: list[str] = [
     "Breaking news: {user}'s {type} didn't survive. What a {insult}.",
 ]
 
+# Optional per-scenario pools. Empty (default) falls back to NOTICE_TEMPLATES,
+# so adding replies is opt-in per scenario. Same placeholders as above.
+NOTICE_TEMPLATES_DURATION: list[str] = []
+NOTICE_TEMPLATES_COOLDOWN: list[str] = []
+
 CONTENT_LABELS: dict[str, str] = {
     "story_forward": "forwarded story",
     "photo": "photo",
@@ -102,6 +107,11 @@ RUSSIAN_REPLIES: list[str] = [
     "{user}, тебе рот для чего нужен? По назначению используй",
 ]
 
+# Optional per-scenario RU pools. Empty (default) falls back to RUSSIAN_REPLIES.
+# Only {user} is substituted here.
+RUSSIAN_REPLIES_DURATION: list[str] = []
+RUSSIAN_REPLIES_COOLDOWN: list[str] = []
+
 # Common aliases for language-specific Russian replies.
 RUSSIAN_TEMPLATES = RUSSIAN_REPLIES
 RU_REPLIES = RUSSIAN_REPLIES
@@ -114,39 +124,54 @@ RUSSIAN_NOTICES = RUSSIAN_REPLIES
 MAX_UNIQUE_ATTEMPTS = 10
 
 
-def render_notice(user: str, ctype: str, rng=random.choice) -> str:
-    """Pick a random template + insult and fill in user and type label."""
+def _scenario_templates(reason: str | None) -> list[str]:
+    """Scenario pool if the owner filled it, else the generic pool."""
+    if reason == "duration" and NOTICE_TEMPLATES_DURATION:
+        return NOTICE_TEMPLATES_DURATION
+    if reason == "cooldown" and NOTICE_TEMPLATES_COOLDOWN:
+        return NOTICE_TEMPLATES_COOLDOWN
+    return NOTICE_TEMPLATES
+
+
+def _scenario_ru_replies(reason: str | None) -> list[str]:
+    if reason == "duration" and RUSSIAN_REPLIES_DURATION:
+        return RUSSIAN_REPLIES_DURATION
+    if reason == "cooldown" and RUSSIAN_REPLIES_COOLDOWN:
+        return RUSSIAN_REPLIES_COOLDOWN
+    return RUSSIAN_REPLIES
+
+
+def render_notice(
+    user: str, ctype: str, reason: str | None = None, rng=random.choice
+) -> str:
+    """Pick a random template + insult and fill in user and type label.
+
+    `reason` is one of "blocked" (default), "duration", "cooldown".
+    A scenario pool is used only when the owner filled it; otherwise the
+    generic pool applies, so per-scenario replies are opt-in.
+    """
     if get_lang() == "ru":
-        return rng(RUSSIAN_REPLIES).format(user=user)
-    return _(rng(NOTICE_TEMPLATES)).format(
+        return rng(_scenario_ru_replies(reason)).format(user=user)
+    templates = _scenario_templates(reason)
+    return _(rng(templates)).format(
         user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
     )
 
 
 def render_unique_notice(
-    user: str, ctype: str, previous: list[str], rng=random.choice
+    user: str, ctype: str, previous: list[str], reason: str | None = None, rng=random.choice
 ) -> str:
     """Render a notice that doesn't repeat any of the previous bot replies.
 
     Re-rolls the random pick while the text matches a recent one; after
     MAX_UNIQUE_ATTEMPTS draws the last one is sent as-is (never hangs).
     """
-    text = render_notice(user, ctype, rng=rng)
+    text = render_notice(user, ctype, reason=reason, rng=rng)
     for _ in range(MAX_UNIQUE_ATTEMPTS - 1):
         if text not in previous:
             return text
-        text = render_notice(user, ctype, rng=rng)
+        text = render_notice(user, ctype, reason=reason, rng=rng)
     return text
-
-
-
-def render_notice(user: str, ctype: str, rng=random.choice) -> str:
-    """Pick a random template + insult and fill in user and type label."""
-    if get_lang() == "ru":
-        return rng(RUSSIAN_REPLIES).format(user=user)
-    return _(rng(NOTICE_TEMPLATES)).format(
-        user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
-    )
 
 
 def format_mention(sender) -> str:

@@ -150,3 +150,61 @@ async def test_cross_type_text_activity_ignores_voice():
         )
     assert app.delete_msg.call_count == 1
     assert store == {(-1001, 111, "text"): now, (-1001, 111, "voice"): now}
+
+
+def _notify_on_patches(**over):
+    kw = dict(
+        get_blocked=AsyncMock(return_value=set()),
+        is_whitelisted=AsyncMock(return_value=False),
+        incr_stat=AsyncMock(),
+        get_notify=AsyncMock(return_value=True),
+        get_owner=AsyncMock(return_value=111),
+        get_owner_lang=AsyncMock(return_value="en"),
+    )
+    kw.update(over)
+    return kw
+
+
+def _stack_notify(patches, store):
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    stack.enter_context(patch("handlers_group.get_blocked", patches["get_blocked"]))
+    stack.enter_context(patch("handlers_group.is_whitelisted", patches["is_whitelisted"]))
+    stack.enter_context(patch("handlers_group.incr_stat", patches["incr_stat"]))
+    stack.enter_context(patch("handlers_group.get_notify", patches["get_notify"]))
+    stack.enter_context(patch("handlers_group.get_owner", patches["get_owner"]))
+    stack.enter_context(patch("handlers_group.get_owner_lang", patches["get_owner_lang"]))
+    stack.enter_context(patch("handlers_group._cooldown_last", store))
+    return stack
+
+
+async def test_duration_fail_notice_uses_duration_reason():
+    app, pool, store = make_app(), object(), {}
+    patches = _notify_on_patches(get_limit=AsyncMock(return_value=(60, None)))
+    with (
+        _stack_notify(patches, store),
+        patch("handlers_group.get_limit", patches["get_limit"]),
+        patch("handlers_group._recent_notice_texts", {}),
+        patch("handlers_group.render_unique_notice", return_value="N") as ru,
+    ):
+        await handle_group_message(
+            pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 65}})), 777
+        )
+    ru.assert_called_once_with("@bob", "voice", [], reason="duration")
+
+
+async def test_cooldown_fail_notice_uses_cooldown_reason():
+    now = datetime.now(timezone.utc)
+    app, pool, store = make_app(), object(), {}
+    patches = _notify_on_patches(get_limit=AsyncMock(return_value=(None, 30)))
+    with (
+        _stack_notify(patches, store),
+        patch("handlers_group.get_limit", patches["get_limit"]),
+        patch("handlers_group._recent_notice_texts", {}),
+        patch("handlers_group.render_unique_notice", return_value="N") as ru,
+        patch("handlers_group._now", return_value=now),
+    ):
+        await handle_group_message(pool, app, GMsg(make_msg(**{"from": sender(), "text": "hi"})), 777)
+        await handle_group_message(pool, app, GMsg(make_msg(**{"from": sender(), "text": "again"})), 777)
+    ru.assert_called_once_with("@bob", "text", [], reason="cooldown")

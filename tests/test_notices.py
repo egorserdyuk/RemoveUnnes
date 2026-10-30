@@ -76,3 +76,33 @@ def test_unique_notice_gives_up_after_max_attempts():
         user="@bob", insult="jerk", type="voice message"
     )
     assert render_unique_notice("@bob", "voice", [dupe], rng=rng) == dupe
+
+
+def test_render_notice_selects_scenario_pool(monkeypatch):
+    import notices
+
+    tpl = "Slow down, {user} — one {type} at a time."
+    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_COOLDOWN", [tpl])
+    text = render_notice("@bob", "text", reason="cooldown", rng=first)
+    assert text == tpl.format(user="@bob", type="text message")
+    generic = render_notice("@bob", "text", rng=first)
+    assert generic != text
+
+
+def test_render_notice_falls_back_to_generic_pool():
+    generic = render_notice("@bob", "voice", rng=first)
+    assert render_notice("@bob", "voice", reason="duration", rng=first) == generic
+    assert render_notice("@bob", "voice", reason="cooldown", rng=first) == generic
+
+
+def test_render_notice_ru_selects_scenario_pool(monkeypatch):
+    import notices
+    from i18n import set_lang
+
+    monkeypatch.setattr(notices, "RUSSIAN_REPLIES_COOLDOWN", ["{user}, помедленнее!"])
+    set_lang("ru")
+    try:
+        assert render_notice("@bob", "text", reason="cooldown", rng=first) == "@bob, помедленнее!"
+        assert render_notice("@bob", "text", rng=first) != "@bob, помедленнее!"
+    finally:
+        set_lang("en")

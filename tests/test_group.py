@@ -217,7 +217,7 @@ async def test_new_notice_avoids_previous_replies():
         "handlers_group._recent_notice_texts", recent
     ), patch("handlers_group.render_unique_notice", return_value="FRESH") as ru:
         await handle_group_message(pool, app, msg, 777)
-    ru.assert_called_once_with("@bob", "voice", ["old1", "old2"])
+    ru.assert_called_once_with("@bob", "voice", ["old1", "old2"], reason="blocked")
     app.send_msg.assert_called_once_with(-1001, "FRESH")
     assert recent == {-1001: ["old2", "FRESH"]}
 
