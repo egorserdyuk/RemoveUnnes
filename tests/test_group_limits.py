@@ -90,3 +90,63 @@ async def test_whitelisted_bypasses_limits_without_lookup():
         await handle_group_message(pool, app, msg, 777)
     app.delete_msg.assert_not_called()
     get_limit.assert_not_called()
+
+
+def _cross_type_patches():
+    async def get_limit(pool, chat_id, ctype):
+        return {"voice": (60, 30), "text": (None, 30)}[ctype]
+
+    return dict(
+        get_blocked=AsyncMock(return_value=set()),
+        is_whitelisted=AsyncMock(return_value=False),
+        get_notify=AsyncMock(return_value=False),
+        incr_stat=AsyncMock(),
+        get_limit=AsyncMock(side_effect=get_limit),
+    )
+
+
+async def test_duration_fail_does_not_seed_cooldown():
+    """An over-long voice must not start a voice cooldown window."""
+    now = datetime.now(timezone.utc)
+    app, pool, store = make_app(), object(), {}
+    with _stack(_cross_type_patches(), store), patch("handlers_group._now", return_value=now):
+        await handle_group_message(
+            pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 65}})), 777
+        )
+        assert store == {}
+        await handle_group_message(
+            pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 30}})), 777
+        )
+    assert app.delete_msg.call_count == 1
+    assert store == {(-1001, 111, "voice"): now}
+
+
+async def test_cross_type_voice_duration_fail_then_text_passes():
+    """A duration delete for voice must not count against the text window."""
+    now = datetime.now(timezone.utc)
+    app, pool, store = make_app(), object(), {}
+    with _stack(_cross_type_patches(), store), patch("handlers_group._now", return_value=now):
+        await handle_group_message(
+            pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 65}})), 777
+        )
+        await handle_group_message(pool, app, GMsg(make_msg(**{"from": sender(), "text": "hi"})), 777)
+    assert app.delete_msg.call_count == 1
+    assert store == {(-1001, 111, "text"): now}
+
+
+async def test_cross_type_text_activity_ignores_voice():
+    """Text passes must not seed the voice window; voice duration fail must not touch it."""
+    now = datetime.now(timezone.utc)
+    app, pool, store = make_app(), object(), {}
+    with _stack(_cross_type_patches(), store), patch("handlers_group._now", return_value=now):
+        await handle_group_message(pool, app, GMsg(make_msg(**{"from": sender(), "text": "hi"})), 777)
+        assert store == {(-1001, 111, "text"): now}
+        await handle_group_message(
+            pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 65}})), 777
+        )
+        assert store == {(-1001, 111, "text"): now}
+        await handle_group_message(
+            pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 30}})), 777
+        )
+    assert app.delete_msg.call_count == 1
+    assert store == {(-1001, 111, "text"): now, (-1001, 111, "voice"): now}

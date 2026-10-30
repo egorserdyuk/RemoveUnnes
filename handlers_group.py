@@ -53,6 +53,21 @@ async def _notify_no_rights(pool, app, chat_id: int, title: str) -> None:
         pass
 
 
+async def _remove(pool, app, msg, fields, chat_id: int, ctype: str) -> None:
+    """Delete an offending message, count it, optionally notify the owner."""
+    try:
+        await app.delete_msg(chat_id, msg.msg_id)
+    except BadRequestError:
+        await _notify_no_rights(pool, app, chat_id, fields.chat_title or str(chat_id))
+        return
+    await incr_stat(pool, chat_id, ctype)
+    if await get_notify(pool, chat_id):
+        owner = await get_owner(pool, chat_id)
+        lang = await get_owner_lang(pool, owner) if owner is not None else None
+        set_lang(lang or "en")
+        await _send_notice(pool, app, chat_id, format_mention(fields.from_user), ctype)
+
+
 async def _handle(pool, app, msg, bot_id: int) -> None:
     if msg.chat_type not in ("group", "supergroup"):
         return
@@ -67,27 +82,25 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
     sender_id = sender.id if sender is not None else None
     if sender_id is not None and await is_whitelisted(pool, chat_id, sender_id):
         return
-    blocked = await get_blocked(pool, chat_id)
+    if ctype in await get_blocked(pool, chat_id):
+        await _remove(pool, app, msg, fields, chat_id, ctype)
+        return
     max_dur, cool = await get_limit(pool, chat_id, ctype)
+    # Scenario: duration cap. Categorized separately from the cooldown window,
+    # so an over-long voice is never treated as activity in any cooldown
+    # bucket — including other types' (e.g. text). Failed messages here
+    # neither read nor write cooldown state.
+    if not is_duration_ok(get_duration(fields), max_dur):
+        await _remove(pool, app, msg, fields, chat_id, ctype)
+        return
+    # Scenario: per-user per-type cooldown window.
     now = _now()
     key = (chat_id, sender_id, ctype)
-    duration_ok = is_duration_ok(get_duration(fields), max_dur)
-    cooldown_ok = is_cooldown_ok(now, _cooldown_last.get(key), cool)
-    if duration_ok and cooldown_ok and ctype not in blocked:
-        if cool is not None and sender_id is not None:
-            _cooldown_last[key] = now
+    if not is_cooldown_ok(now, _cooldown_last.get(key), cool):
+        await _remove(pool, app, msg, fields, chat_id, ctype)
         return
-    try:
-        await app.delete_msg(chat_id, msg.msg_id)
-    except BadRequestError:
-        await _notify_no_rights(pool, app, chat_id, fields.chat_title or str(chat_id))
-        return
-    await incr_stat(pool, chat_id, ctype)
-    if await get_notify(pool, chat_id):
-        owner = await get_owner(pool, chat_id)
-        lang = await get_owner_lang(pool, owner) if owner is not None else None
-        set_lang(lang or "en")
-        await _send_notice(pool, app, chat_id, format_mention(sender), ctype)
+    if cool is not None and sender_id is not None:
+        _cooldown_last[key] = now
 
 
 async def _send_notice(pool, app, chat_id: int, user: str, ctype: str) -> None:
