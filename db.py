@@ -46,6 +46,13 @@ CREATE TABLE IF NOT EXISTS notify_state (
     chat_id BIGINT PRIMARY KEY,
     notified_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS limits (
+    chat_id BIGINT NOT NULL,
+    ctype TEXT NOT NULL,
+    max_duration_sec INTEGER,
+    cooldown_sec INTEGER,
+    PRIMARY KEY (chat_id, ctype)
+);
 ALTER TABLE groups ADD COLUMN IF NOT EXISTS notify_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 DROP TABLE IF EXISTS notice_msgs;
 """
@@ -153,6 +160,7 @@ async def register_group(pool: asyncpg.Pool, chat_id: int, owner_id: int, title:
             await conn.execute("DELETE FROM blocked WHERE chat_id = $1", chat_id)
             await conn.execute("DELETE FROM whitelist WHERE chat_id = $1", chat_id)
             await conn.execute("DELETE FROM stats WHERE chat_id = $1", chat_id)
+            await conn.execute("DELETE FROM limits WHERE chat_id = $1", chat_id)
             await conn.execute(
                 "INSERT INTO owners (user_id) VALUES ($1) ON CONFLICT DO NOTHING", owner_id
             )
@@ -294,6 +302,59 @@ async def reset_group_data(pool: asyncpg.Pool, chat_id: int) -> None:
             await conn.execute("DELETE FROM blocked WHERE chat_id = $1", chat_id)
             await conn.execute("DELETE FROM whitelist WHERE chat_id = $1", chat_id)
             await conn.execute("DELETE FROM stats WHERE chat_id = $1", chat_id)
+            await conn.execute("DELETE FROM limits WHERE chat_id = $1", chat_id)
+
+
+async def get_limits(pool: asyncpg.Pool, chat_id: int) -> dict[str, tuple[int | None, int | None]]:
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ctype, max_duration_sec, cooldown_sec FROM limits WHERE chat_id = $1",
+            chat_id,
+        )
+        return {r["ctype"]: (r["max_duration_sec"], r["cooldown_sec"]) for r in rows}
+
+
+async def get_limit(
+    pool: asyncpg.Pool, chat_id: int, ctype: str
+) -> tuple[int | None, int | None]:
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT max_duration_sec, cooldown_sec FROM limits"
+            " WHERE chat_id = $1 AND ctype = $2",
+            chat_id,
+            ctype,
+        )
+        if row is None:
+            return (None, None)
+        return (row["max_duration_sec"], row["cooldown_sec"])
+
+
+async def set_limit(
+    pool: asyncpg.Pool,
+    chat_id: int,
+    ctype: str,
+    max_duration_sec: int | None,
+    cooldown_sec: int | None,
+) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO limits (chat_id, ctype, max_duration_sec, cooldown_sec)"
+            " VALUES ($1, $2, $3, $4)"
+            " ON CONFLICT (chat_id, ctype) DO UPDATE SET"
+            " max_duration_sec = EXCLUDED.max_duration_sec,"
+            " cooldown_sec = EXCLUDED.cooldown_sec",
+            chat_id,
+            ctype,
+            max_duration_sec,
+            cooldown_sec,
+        )
+
+
+async def clear_limit(pool: asyncpg.Pool, chat_id: int, ctype: str) -> None:
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM limits WHERE chat_id = $1 AND ctype = $2", chat_id, ctype
+        )
 
 
 async def add_pending_greeting(pool: asyncpg.Pool, owner_id: int, chat_id: int, title: str) -> None:
