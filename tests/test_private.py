@@ -266,3 +266,23 @@ async def test_start_clears_pending():
     ):
         await route_private(pool, app, make_msg("/start"))
     assert 111 not in _pending_limits
+
+
+async def test_pending_ignores_non_text_message():
+    from handlers_private import _pending_limits, route_private
+
+    for text in (None, "", "   "):
+        _pending_limits.clear()
+        _pending_limits[111] = (-1001, "voice", "dur")
+        app, pool = make_app(), object()
+        msg = make_msg("")
+        msg.text = text
+        with (
+            patch("handlers_private.get_limit", AsyncMock()) as gl,
+            patch("handlers_private.set_limit", AsyncMock()) as sl,
+        ):
+            await route_private(pool, app, msg)
+        sl.assert_not_called()
+        gl.assert_not_called()
+        assert _pending_limits.get(111) == (-1001, "voice", "dur")
+        app.send_msg.assert_not_called()

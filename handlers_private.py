@@ -306,9 +306,12 @@ async def _consume_pending_limit(pool, app, msg) -> bool:
     pending = _pending_limits.get(msg.from_id)
     if pending is None:
         return False
+    text = msg.text
+    if not isinstance(text, str) or not text.strip():
+        return False
     chat_id, ctype, field = pending
     try:
-        value = parse_window(msg.text)
+        value = parse_window(text)
     except ValueError:
         await app.send_msg(msg.chat_id, texts.LIMIT_BAD_VALUE())
         return True

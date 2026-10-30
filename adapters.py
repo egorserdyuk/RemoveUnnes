@@ -87,7 +87,10 @@ def is_start_command(text: str | None) -> bool:
     """True for /start with optional @bot suffix and args."""
     if not text:
         return False
-    first = text.strip().split()[0].split("@")[0]
+    parts = text.strip().split()
+    if not parts:
+        return False
+    first = parts[0].split("@")[0]
     return first == "/start"
 
 
