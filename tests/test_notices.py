@@ -23,10 +23,16 @@ def test_all_templates_render_with_user_and_type():
 
 
 def test_all_ru_replies_render_with_user():
-    from notices import RUSSIAN_REPLIES, RUSSIAN_REPLIES_COOLDOWN, RUSSIAN_REPLIES_DURATION
+    from notices import (
+        RUSSIAN_REPLIES,
+        RUSSIAN_REPLIES_BLOCKED,
+        RUSSIAN_REPLIES_COOLDOWN,
+        RUSSIAN_REPLIES_DURATION,
+    )
 
     pools = (
         [RUSSIAN_REPLIES]
+        + list(RUSSIAN_REPLIES_BLOCKED.values())
         + list(RUSSIAN_REPLIES_DURATION.values())
         + list(RUSSIAN_REPLIES_COOLDOWN.values())
     )
@@ -139,5 +145,30 @@ def test_render_notice_ru_selects_scenario_pool(monkeypatch):
         assert render_notice("@bob", "photo", reason="cooldown", rng=first) == render_notice(
             "@bob", "photo", rng=first
         )
+    finally:
+        set_lang("en")
+
+
+def test_blocked_voice_ru_uses_voice_pool():
+    import notices
+    from i18n import set_lang
+
+    set_lang("ru")
+    try:
+        text = render_notice("@bob", "voice", reason="blocked", rng=first)
+        assert text == notices.RUSSIAN_REPLIES_BLOCKED["voice"][0].format(user="@bob")
+        assert "голосовое" in text or "Голосовое" in text or "рот" in text or "слуша" in text
+    finally:
+        set_lang("en")
+
+
+def test_blocked_other_type_ru_uses_generic_pool():
+    import notices
+    from i18n import set_lang
+
+    set_lang("ru")
+    try:
+        text = render_notice("@bob", "photo", reason="blocked", rng=first)
+        assert text == notices.RUSSIAN_REPLIES[0].format(user="@bob")
     finally:
         set_lang("en")
