@@ -2,12 +2,20 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from goygram.errors import BadRequestError
 
 import handlers_group
 from handlers_group import handle_edited_message, handle_group_message
 
 NOTIFY_WINDOW = handlers_group.NOTIFY_WINDOW
+
+
+@pytest.fixture(autouse=True)
+def _no_limits():
+    """Default: no duration/cooldown limits (Task 3 added a per-message get_limit call)."""
+    with patch("handlers_group.get_limit", AsyncMock(return_value=(None, None))):
+        yield
 
 
 class GMsg:

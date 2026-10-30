@@ -7,11 +7,21 @@ from goygram.errors import BadRequestError, ForbiddenError
 import texts
 from adapters import message_fields
 from classify import classify, is_command_exempt
-from db import get_blocked, get_notify, get_owner, get_owner_lang, incr_stat, is_whitelisted
+from db import (
+    get_blocked,
+    get_limit,
+    get_notify,
+    get_owner,
+    get_owner_lang,
+    incr_stat,
+    is_whitelisted,
+)
 from i18n import set_lang
+from limits import get_duration, is_cooldown_ok, is_duration_ok
 from notices import format_mention, render_unique_notice
 
 NOTIFY_WINDOW = timedelta(minutes=10)
+_cooldown_last: dict[tuple[int, int, str], datetime] = {}
 _last_notify: dict[tuple[int], datetime] = {}
 # Last bot notice texts per chat (in-memory). A new notice is re-rolled while
 # it matches one of these, so back-to-back replies never repeat themselves.
@@ -54,7 +64,15 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
     sender_id = sender.id if sender is not None else None
     if sender_id is not None and await is_whitelisted(pool, chat_id, sender_id):
         return
-    if ctype not in await get_blocked(pool, chat_id):
+    blocked = await get_blocked(pool, chat_id)
+    max_dur, cool = await get_limit(pool, chat_id, ctype)
+    now = _now()
+    key = (chat_id, sender_id, ctype)
+    duration_ok = is_duration_ok(get_duration(fields), max_dur)
+    cooldown_ok = is_cooldown_ok(now, _cooldown_last.get(key), cool)
+    if duration_ok and cooldown_ok and ctype not in blocked:
+        if cool is not None and sender_id is not None:
+            _cooldown_last[key] = now
         return
     try:
         await app.delete_msg(chat_id, msg.msg_id)
