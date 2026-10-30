@@ -14,6 +14,8 @@ from classify import CONTENT_TYPES
 from i18n import _, n
 from limits import DURATION_TYPES, format_window
 
+import texts
+
 
 def _inline(*rows: list[dict]) -> dict:
     return {"inline_keyboard": [[dict(b) for b in row] for row in rows]}
@@ -45,7 +47,7 @@ def group_menu_kb(
         [_btn(_("Stats"), f"stats:{chat_id}")],
         [_btn(_("Reset stats"), f"reset_stats:{chat_id}")],
         [_btn(_("Remove group data"), f"reset_group:{chat_id}")],
-        [_btn(_("Limits"), f"limits:{chat_id}")],
+        [_btn(texts.LIMITS_BUTTON(), f"limits:{chat_id}")],
         [_btn(_("« My groups"), "back_groups")],
     )
 
@@ -90,6 +92,12 @@ def limits_list_kb(chat_id: int, limits: dict) -> dict:
 
 
 def limit_detail_kb(chat_id: int, ctype: str, dur: int | None, cool: int | None) -> dict:
+    """Detail-screen buttons for one limit type.
+
+    ``dur``/``cool`` are kept for call-site symmetry with
+    ``limits_list_kb`` (and back-compat) — button labels do not render
+    values; the current values live in the message text instead.
+    """
     rows = []
     if ctype in DURATION_TYPES:
         rows.append([_btn(_("Set duration"), f"lim_dur:{chat_id}:{ctype}")])

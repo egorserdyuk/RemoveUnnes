@@ -31,7 +31,7 @@ from keyboards import (
     limits_list_kb,
     types_kb,
 )
-from limits import format_window, parse_window
+from limits import DURATION_TYPES, parse_window
 
 _pending_limits: dict[int, tuple[int, str, str]] = {}
 
@@ -225,7 +225,7 @@ async def on_notify(pool, app, cb) -> None:
 
 
 def _limit_detail_text(ctype: str, dur: int | None, cool: int | None) -> str:
-    return f"{ctype}: max duration {format_window(dur)}, cooldown {format_window(cool)}"
+    return texts.LIMIT_DETAIL(ctype, dur, cool)
 
 
 async def on_limits_list(pool, app, cb) -> None:
@@ -266,6 +266,19 @@ async def on_lim_dur(pool, app, cb) -> None:
     if not await _owner_only(pool, chat_id, cb.from_id):
         await _deny(app, cb)
         return
+    if ctype not in DURATION_TYPES:
+        # Duration caps apply to DURATION_TYPES only; reject crafted
+        # lim_dur callbacks for other types by re-rendering the detail
+        # screen without arming a pending duration input.
+        dur, cool = await get_limit(pool, chat_id, ctype)
+        await app.edit_msg(
+            cb.chat_id,
+            cb.msg_id,
+            _limit_detail_text(ctype, dur, cool),
+            kbd=limit_detail_kb(chat_id, ctype, dur, cool),
+        )
+        await cb.answer()
+        return
     _pending_limits[cb.from_id] = (chat_id, ctype, "dur")
     await app.send_msg(cb.chat_id, texts.LIMIT_PROMPT_DUR())
     await cb.answer()
@@ -291,6 +304,11 @@ async def on_lim_clear(pool, app, cb) -> None:
         await _deny(app, cb)
         return
     await clear_limit(pool, chat_id, ctype)
+    # Drop any stale pending dur/cool input for this chat+type so a
+    # cleared limit cannot be resurrected by a late text reply.
+    for uid, (pend_chat, pend_ctype, _field) in list(_pending_limits.items()):
+        if pend_chat == chat_id and pend_ctype == ctype:
+            del _pending_limits[uid]
     dur, cool = await get_limit(pool, chat_id, ctype)
     await app.edit_msg(
         cb.chat_id,
@@ -310,6 +328,19 @@ async def _consume_pending_limit(pool, app, msg) -> bool:
     if not isinstance(text, str) or not text.strip():
         return False
     chat_id, ctype, field = pending
+    # Ownership may have changed since the pending input was armed; a
+    # deposed owner must not write limits. Drop pending and deny.
+    if await get_owner(pool, chat_id) != msg.from_id:
+        del _pending_limits[msg.from_id]
+        await app.send_msg(msg.chat_id, texts.NOT_OWNER())
+        return True
+    # Defense in depth: duration caps apply to DURATION_TYPES only, so a
+    # stale/crafted pending duration for any other type is rejected here
+    # even if it slipped past on_lim_dur.
+    if field == "dur" and ctype not in DURATION_TYPES:
+        del _pending_limits[msg.from_id]
+        await app.send_msg(msg.chat_id, texts.LIMIT_BAD_VALUE())
+        return True
     try:
         value = parse_window(text)
     except ValueError:

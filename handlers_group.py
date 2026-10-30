@@ -21,7 +21,10 @@ from limits import get_duration, is_cooldown_ok, is_duration_ok
 from notices import format_mention, render_unique_notice
 
 NOTIFY_WINDOW = timedelta(minutes=10)
-_cooldown_last: dict[tuple[int, int, str], datetime] = {}
+# sender_id is None for anonymous/group-sent messages: they bypass the
+# per-user cooldown (no stable bucket) but duration caps and blocked
+# types still apply.
+_cooldown_last: dict[tuple[int, int | None, str], datetime] = {}
 _last_notify: dict[tuple[int], datetime] = {}
 # Last bot notice texts per chat (in-memory). A new notice is re-rolled while
 # it matches one of these, so back-to-back replies never repeat themselves.

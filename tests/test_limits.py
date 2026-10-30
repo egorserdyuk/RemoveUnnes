@@ -27,6 +27,14 @@ def test_parse_window_rejects_garbage():
             parse_window(bad)
 
 
+def test_parse_window_max_guard():
+    import pytest
+    assert parse_window("365d") == 365 * 86400
+    for bad in ["366d", "999999999d", "1000000h"]:
+        with pytest.raises(ValueError):
+            parse_window(bad)
+
+
 def test_get_duration_kinds():
     from types import SimpleNamespace
     assert get_duration(SimpleNamespace(voice={"duration": 65}, video=None, video_note=None, audio=None, animation=None)) == 65

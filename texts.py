@@ -1,6 +1,7 @@
 """English msgids for all user-visible copy (translated via i18n_ru.py)."""
 
 from i18n import _
+from limits import format_window
 
 
 def START() -> str:
@@ -81,3 +82,9 @@ def LIMIT_SET_OK() -> str:
 
 def LIMIT_BAD_VALUE() -> str:
     return _("Bad value. Send like 30s/1m/1h/1d or off")
+
+
+def LIMIT_DETAIL(ctype: str, dur: int | None, cool: int | None) -> str:
+    return _("{ctype}: max duration {dur}, cooldown {cool}").format(
+        ctype=ctype, dur=format_window(dur), cool=format_window(cool)
+    )

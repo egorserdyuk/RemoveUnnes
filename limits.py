@@ -17,6 +17,9 @@ _MULTIPLIERS: dict[str, int] = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
 _WINDOW_RE = re.compile(r"^\s*(\d+)\s*([smhdSMHD])\s*$")
 
+#: Upper bound for parsed windows (Postgres INTEGER column + sane config).
+MAX_WINDOW_SEC: int = 365 * 86400
+
 
 def parse_window(s: str | None) -> int | None:
     """Parse a ``30s``-style window into seconds; ``off``/``0``/empty -> None."""
@@ -28,7 +31,10 @@ def parse_window(s: str | None) -> int | None:
     m = _WINDOW_RE.match(s)
     if not m:
         raise ValueError(f"bad window value: {s!r}")
-    return int(m.group(1)) * _MULTIPLIERS[m.group(2).lower()]
+    value = int(m.group(1)) * _MULTIPLIERS[m.group(2).lower()]
+    if value > MAX_WINDOW_SEC:
+        raise ValueError(f"window value too large: {s!r} (max 365d)")
+    return value
 
 
 def format_window(sec: int | None) -> str:
