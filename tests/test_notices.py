@@ -7,10 +7,20 @@ def first(choices):
 
 
 def test_all_templates_render_with_user_and_type():
-    for tpl in NOTICE_TEMPLATES:
+    from notices import NOTICE_TEMPLATES_COOLDOWN, NOTICE_TEMPLATES_DURATION
+
+    for tpl in NOTICE_TEMPLATES + NOTICE_TEMPLATES_DURATION + NOTICE_TEMPLATES_COOLDOWN:
         assert "{user}" in tpl and "{type}" in tpl
         text = tpl.format(user="@bob", insult="rascal", type="voice message")
         assert "@bob" in text and "voice message" in text
+
+
+def test_all_ru_replies_render_with_user():
+    from notices import RUSSIAN_REPLIES, RUSSIAN_REPLIES_COOLDOWN, RUSSIAN_REPLIES_DURATION
+
+    for tpl in RUSSIAN_REPLIES + RUSSIAN_REPLIES_DURATION + RUSSIAN_REPLIES_COOLDOWN:
+        assert "{user}" in tpl
+        assert "@bob" in tpl.format(user="@bob")
 
 
 def test_render_notice_contains_user_type_and_known_insult():
@@ -89,7 +99,11 @@ def test_render_notice_selects_scenario_pool(monkeypatch):
     assert generic != text
 
 
-def test_render_notice_falls_back_to_generic_pool():
+def test_render_notice_falls_back_to_generic_pool(monkeypatch):
+    import notices
+
+    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_DURATION", [])
+    monkeypatch.setattr(notices, "NOTICE_TEMPLATES_COOLDOWN", [])
     generic = render_notice("@bob", "voice", rng=first)
     assert render_notice("@bob", "voice", reason="duration", rng=first) == generic
     assert render_notice("@bob", "voice", reason="cooldown", rng=first) == generic

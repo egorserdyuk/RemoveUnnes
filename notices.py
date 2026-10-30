@@ -38,8 +38,16 @@ NOTICE_TEMPLATES: list[str] = [
 
 # Optional per-scenario pools. Empty (default) falls back to NOTICE_TEMPLATES,
 # so adding replies is opt-in per scenario. Same placeholders as above.
-NOTICE_TEMPLATES_DURATION: list[str] = []
-NOTICE_TEMPLATES_COOLDOWN: list[str] = []
+NOTICE_TEMPLATES_DURATION: list[str] = [
+    "Too long, {user} — that {type} didn't fit the limit. Trim it.",
+    "{user} sent a {type} longer than allowed. Deleted, no refund.",
+    "That {type} from {user} was over the duration cap. Gone.",
+]
+NOTICE_TEMPLATES_COOLDOWN: list[str] = [
+    "Slow down, {user} — one {type} at a time. Cooling off.",
+    "{user} is spamming {type}. This one didn't make it.",
+    "Patience, {user}. That {type} arrived too soon after the last one.",
+]
 
 CONTENT_LABELS: dict[str, str] = {
     "story_forward": "forwarded story",
@@ -109,8 +117,16 @@ RUSSIAN_REPLIES: list[str] = [
 
 # Optional per-scenario RU pools. Empty (default) falls back to RUSSIAN_REPLIES.
 # Only {user} is substituted here.
-RUSSIAN_REPLIES_DURATION: list[str] = []
-RUSSIAN_REPLIES_COOLDOWN: list[str] = []
+RUSSIAN_REPLIES_DURATION: list[str] = [
+    "{user}, слишком длинное. Никто это слушать не будет, удалил.",
+    "{user}, краткость — сестра таланта. Учись.",
+    "{user} записал эпопею вместо голосового. Сокращай.",
+]
+RUSSIAN_REPLIES_COOLDOWN: list[str] = [
+    "{user}, помедленнее! Одно сообщение за раз.",
+    "{user}, ты спамишь. Подожди немного.",
+    "{user}, терпение. Прошло слишком мало времени с прошлого раза.",
+]
 
 # Common aliases for language-specific Russian replies.
 RUSSIAN_TEMPLATES = RUSSIAN_REPLIES
