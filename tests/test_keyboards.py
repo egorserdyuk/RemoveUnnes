@@ -3,6 +3,8 @@ from keyboards import (
     confirm_reset_kb,
     group_menu_kb,
     groups_kb,
+    limit_detail_kb,
+    limits_list_kb,
     picker_kb,
     types_kb,
     whitelist_kb,
@@ -60,3 +62,27 @@ def test_back_and_confirm_buttons():
     assert flat_data(back_to_group_kb(-1001)) == ["group:-1001"]
     datas = flat_data(confirm_reset_kb(-1001))
     assert datas == ["reset_group:-1001:confirm", "group:-1001"]
+
+
+def test_group_menu_has_limits_row():
+    kb = group_menu_kb(-1001, n_blocked=0, n_white=0)
+    assert "limits:-1001" in flat_data(kb)
+
+
+def test_limits_list_kb_shows_dur_cool():
+    kb = limits_list_kb(-1001, {"voice": (60, 30)})
+    datas = flat_data(kb)
+    assert "lim:-1001:voice" in datas
+    assert "group:-1001" in datas
+    assert "1m/30s" in flat_text(kb)
+
+
+def test_limit_detail_kb_duration_only_for_duration_types():
+    voice_datas = flat_data(limit_detail_kb(-1001, "voice", 60, 30))
+    assert "lim_dur:-1001:voice" in voice_datas
+    assert "lim_cool:-1001:voice" in voice_datas
+    assert "lim_clear:-1001:voice" in voice_datas
+    text_datas = flat_data(limit_detail_kb(-1001, "text", None, 30))
+    assert "lim_dur:-1001:text" not in text_datas
+    assert "lim_cool:-1001:text" in text_datas
+    assert "lim_clear:-1001:text" in text_datas

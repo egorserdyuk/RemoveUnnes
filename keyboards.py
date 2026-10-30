@@ -5,11 +5,14 @@ Callback prefixes (exact):
   white:{chat_id}  pick_users:{chat_id}  unwhite:{chat_id}:{user_id}
   notify:{chat_id}  stats:{chat_id}  lang:{en,ru}
   reset_stats:{chat_id}  reset_group:{chat_id}  reset_group:{chat_id}:confirm
+  limits:{chat_id}  lim:{chat_id}:{ctype}
+  lim_dur:{chat_id}:{ctype}  lim_cool:{chat_id}:{ctype}  lim_clear:{chat_id}:{ctype}
   back_groups
 """
 
 from classify import CONTENT_TYPES
 from i18n import _, n
+from limits import DURATION_TYPES, format_window
 
 
 def _inline(*rows: list[dict]) -> dict:
@@ -42,6 +45,7 @@ def group_menu_kb(
         [_btn(_("Stats"), f"stats:{chat_id}")],
         [_btn(_("Reset stats"), f"reset_stats:{chat_id}")],
         [_btn(_("Remove group data"), f"reset_group:{chat_id}")],
+        [_btn(_("Limits"), f"limits:{chat_id}")],
         [_btn(_("« My groups"), "back_groups")],
     )
 
@@ -73,6 +77,26 @@ def whitelist_kb(chat_id: int, users: list[tuple[int, str | None]]) -> dict:
 
 def back_to_group_kb(chat_id: int) -> dict:
     return _inline([_btn(_("« Back"), f"group:{chat_id}")])
+
+
+def limits_list_kb(chat_id: int, limits: dict) -> dict:
+    rows = []
+    for ctype in CONTENT_TYPES:
+        dur, cool = limits.get(ctype, (None, None))
+        rows.append([_btn(f"{ctype} · {format_window(dur)}/{format_window(cool)}",
+                         f"lim:{chat_id}:{ctype}")])
+    rows.append([_btn(_("« Back"), f"group:{chat_id}")])
+    return {"inline_keyboard": rows}
+
+
+def limit_detail_kb(chat_id: int, ctype: str, dur: int | None, cool: int | None) -> dict:
+    rows = []
+    if ctype in DURATION_TYPES:
+        rows.append([_btn(_("Set duration"), f"lim_dur:{chat_id}:{ctype}")])
+    rows.append([_btn(_("Set cooldown"), f"lim_cool:{chat_id}:{ctype}")])
+    rows.append([_btn(_("Clear"), f"lim_clear:{chat_id}:{ctype}")])
+    rows.append([_btn(_("« Back"), f"limits:{chat_id}")])
+    return {"inline_keyboard": rows}
 
 
 def confirm_reset_kb(chat_id: int) -> dict:

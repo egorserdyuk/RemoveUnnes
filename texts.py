@@ -57,3 +57,27 @@ def LANG_BUTTON_EN() -> str:
 
 def LANG_BUTTON_RU() -> str:
     return _("🌐 Русский")
+
+
+def LIMITS_BUTTON() -> str:
+    return _("Limits")
+
+
+def LIMITS_TITLE(title: str) -> str:
+    return _("Limits for {title} (tap a type):").format(title=title)
+
+
+def LIMIT_PROMPT_DUR() -> str:
+    return _("Send max duration as 30s/1m/1h/1d or off")
+
+
+def LIMIT_PROMPT_COOL() -> str:
+    return _("Send cooldown as 30s/1m/1h/1d or off")
+
+
+def LIMIT_SET_OK() -> str:
+    return _("Limit saved.")
+
+
+def LIMIT_BAD_VALUE() -> str:
+    return _("Bad value. Send like 30s/1m/1h/1d or off")

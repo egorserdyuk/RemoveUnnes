@@ -192,3 +192,77 @@ async def test_private_router_ignores_groups_and_other_text():
         await route_private(pool, app, make_msg("just chatting"))
     st.assert_not_called()
     sh.assert_not_called()
+
+
+async def test_limits_list_renders():
+    from handlers_private import on_limits_list
+
+    cb, app, pool = GCb("limits:-1001", 111), make_app(), object()
+    with (
+        patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
+        patch("handlers_private.get_limits", AsyncMock(return_value={"voice": (60, 30)})),
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[(-1001, "G")])),
+    ):
+        await on_limits_list(pool, app, cb)
+    assert app.edit_msg.await_count == 1
+
+
+async def test_limit_detail_renders_with_current_values():
+    from handlers_private import on_limit_detail
+
+    cb, app, pool = GCb("lim:-1001:voice", 111), make_app(), object()
+    with (
+        patch("handlers_private.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
+        patch("handlers_private.get_limit", AsyncMock(return_value=(60, 30))),
+    ):
+        await on_limit_detail(pool, app, cb)
+    assert app.edit_msg.await_count == 1
+    args, _kw = app.edit_msg.call_args
+    assert "voice" in args[2] and "1m" in args[2] and "30s" in args[2]
+
+
+async def test_limit_value_parse_error_keeps_pending():
+    from handlers_private import _pending_limits, route_private
+
+    _pending_limits.clear()
+    _pending_limits[111] = (-1001, "voice", "dur")
+    app, pool = make_app(), object()
+    with patch("handlers_private.set_limit", AsyncMock()) as sl:
+        await route_private(pool, app, make_msg("5x"))
+    sl.assert_not_called()
+    assert _pending_limits.get(111) == (-1001, "voice", "dur")
+    app.send_msg.assert_called_once()
+    assert "30s" in app.send_msg.call_args[0][1]
+
+
+async def test_limit_value_success_clears_pending():
+    from handlers_private import _pending_limits, route_private
+
+    _pending_limits.clear()
+    _pending_limits[111] = (-1001, "voice", "dur")
+    app, pool = make_app(), object()
+    with (
+        patch("handlers_private.get_limit", AsyncMock(return_value=(None, 30))),
+        patch("handlers_private.set_limit", AsyncMock()) as sl,
+    ):
+        await route_private(pool, app, make_msg("1m"))
+    sl.assert_called_once_with(pool, -1001, "voice", 60, 30)
+    assert 111 not in _pending_limits
+    app.send_msg.assert_called_once()
+
+
+async def test_start_clears_pending():
+    from handlers_private import _pending_limits, route_private
+
+    _pending_limits.clear()
+    _pending_limits[111] = (-1001, "voice", "dur")
+    app, pool = make_app(), object()
+    with (
+        patch("handlers_private.get_owner_lang", AsyncMock(return_value="en")),
+        patch("handlers_private.owner_groups", AsyncMock(return_value=[])),
+        patch("handlers_membership.flush_pending", AsyncMock()),
+    ):
+        await route_private(pool, app, make_msg("/start"))
+    assert 111 not in _pending_limits

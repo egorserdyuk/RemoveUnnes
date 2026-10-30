@@ -3,8 +3,11 @@
 import texts
 from adapters import is_start_command
 from db import (
+    clear_limit,
     format_stats,
     get_blocked,
+    get_limit,
+    get_limits,
     get_notify,
     get_owner,
     get_owner_lang,
@@ -12,6 +15,7 @@ from db import (
     owner_groups,
     reset_group_data,
     reset_stats,
+    set_limit,
     set_owner_lang,
     toggle_blocked,
     toggle_notify,
@@ -23,8 +27,13 @@ from keyboards import (
     confirm_reset_kb,
     group_menu_kb,
     groups_kb,
+    limit_detail_kb,
+    limits_list_kb,
     types_kb,
 )
+from limits import format_window, parse_window
+
+_pending_limits: dict[int, tuple[int, str, str]] = {}
 
 
 async def _owner_only(pool, chat_id: int, user_id: int) -> bool:
@@ -215,6 +224,105 @@ async def on_notify(pool, app, cb) -> None:
     await cb.answer()
 
 
+def _limit_detail_text(ctype: str, dur: int | None, cool: int | None) -> str:
+    return f"{ctype}: max duration {format_window(dur)}, cooldown {format_window(cool)}"
+
+
+async def on_limits_list(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
+        return
+    title = await _group_title(pool, cb.from_id, chat_id)
+    limits = await get_limits(pool, chat_id)
+    await app.edit_msg(
+        cb.chat_id, cb.msg_id, texts.LIMITS_TITLE(title), kbd=limits_list_kb(chat_id, limits)
+    )
+    await cb.answer()
+
+
+async def on_limit_detail(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    _prefix, chat_s, ctype = cb.data.split(":", 2)
+    chat_id = int(chat_s)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
+        return
+    dur, cool = await get_limit(pool, chat_id, ctype)
+    await app.edit_msg(
+        cb.chat_id,
+        cb.msg_id,
+        _limit_detail_text(ctype, dur, cool),
+        kbd=limit_detail_kb(chat_id, ctype, dur, cool),
+    )
+    await cb.answer()
+
+
+async def on_lim_dur(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    _prefix, chat_s, ctype = cb.data.split(":", 2)
+    chat_id = int(chat_s)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
+        return
+    _pending_limits[cb.from_id] = (chat_id, ctype, "dur")
+    await app.send_msg(cb.chat_id, texts.LIMIT_PROMPT_DUR())
+    await cb.answer()
+
+
+async def on_lim_cool(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    _prefix, chat_s, ctype = cb.data.split(":", 2)
+    chat_id = int(chat_s)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
+        return
+    _pending_limits[cb.from_id] = (chat_id, ctype, "cool")
+    await app.send_msg(cb.chat_id, texts.LIMIT_PROMPT_COOL())
+    await cb.answer()
+
+
+async def on_lim_clear(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    _prefix, chat_s, ctype = cb.data.split(":", 2)
+    chat_id = int(chat_s)
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
+        return
+    await clear_limit(pool, chat_id, ctype)
+    dur, cool = await get_limit(pool, chat_id, ctype)
+    await app.edit_msg(
+        cb.chat_id,
+        cb.msg_id,
+        _limit_detail_text(ctype, dur, cool),
+        kbd=limit_detail_kb(chat_id, ctype, dur, cool),
+    )
+    await cb.answer()
+
+
+async def _consume_pending_limit(pool, app, msg) -> bool:
+    """Handle a private text as a pending limit value. Returns True if consumed."""
+    pending = _pending_limits.get(msg.from_id)
+    if pending is None:
+        return False
+    chat_id, ctype, field = pending
+    try:
+        value = parse_window(msg.text)
+    except ValueError:
+        await app.send_msg(msg.chat_id, texts.LIMIT_BAD_VALUE())
+        return True
+    dur, cool = await get_limit(pool, chat_id, ctype)
+    if field == "dur":
+        dur = value
+    else:
+        cool = value
+    await set_limit(pool, chat_id, ctype, dur, cool)
+    del _pending_limits[msg.from_id]
+    await app.send_msg(msg.chat_id, texts.LIMIT_SET_OK())
+    return True
+
+
 async def route_private(pool, app, msg) -> None:
     """Route a private-chat message: users_shared picker result or /start."""
     if msg.chat_type != "private":
@@ -225,7 +333,10 @@ async def route_private(pool, app, msg) -> None:
         await on_users_shared(pool, app, msg)
         return
     if is_start_command(msg.text):
+        _pending_limits.pop(msg.from_id, None)
         await on_start(pool, app, msg)
+        return
+    await _consume_pending_limit(pool, app, msg)
 
 
 async def route_cb(pool, app, cb) -> None:
@@ -253,6 +364,16 @@ async def route_cb(pool, app, cb) -> None:
         await on_reset_stats(pool, app, cb)
     elif data.startswith("reset_group:"):
         await on_reset_group(pool, app, cb)
+    elif data.startswith("limits:"):
+        await on_limits_list(pool, app, cb)
+    elif data.startswith("lim_dur:"):
+        await on_lim_dur(pool, app, cb)
+    elif data.startswith("lim_cool:"):
+        await on_lim_cool(pool, app, cb)
+    elif data.startswith("lim_clear:"):
+        await on_lim_clear(pool, app, cb)
+    elif data.startswith("lim:"):
+        await on_limit_detail(pool, app, cb)
     elif data == "back_groups":
         await on_back_groups(pool, app, cb)
     elif data.startswith("lang:"):
