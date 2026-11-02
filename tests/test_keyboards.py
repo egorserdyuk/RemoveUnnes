@@ -49,6 +49,18 @@ def test_whitelist_kb_remove_buttons():
     assert "unwhite:-1001:7" in flat_data(kb)
 
 
+def test_whitelist_kb_add_myself_when_absent():
+    kb = whitelist_kb(-1001, [(7, "bob")], self_id=111)
+    assert "Add myself" in flat_text(kb)
+    assert "addself:-1001" in flat_data(kb)
+
+
+def test_whitelist_kb_remove_myself_when_present():
+    kb = whitelist_kb(-1001, [(111, "boss")], self_id=111)
+    assert "Remove myself" in flat_text(kb)
+    assert "unwhite:-1001:111" in flat_data(kb)
+
+
 def test_picker_kb_requests_users():
     kb = picker_kb(42)
     btn = kb["keyboard"][0][0]

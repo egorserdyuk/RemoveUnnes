@@ -7,6 +7,7 @@ Missing keys fall back to the English msgid at runtime.
 
 RU_STRINGS: dict[str, str] = {
     '+ Add via picker': '+ Добавить через выбор',
+    'Add myself': 'Добавить себя',
     'A wild {type} from {user} appeared! I swept it away.': 'Да мне похуй что ты вообще говоришь {user}',
     'Blocked types for {title} (tap to toggle):\n{note}': 'Заблокированные типы для {title} (нажмите для переключения):\n{note}',
     'Blocked types: {n}': 'Заблокированные типы: {n}',
@@ -37,6 +38,7 @@ RU_STRINGS: dict[str, str] = {
     'Only the person who added me here can change this.': 'Только тот, кто добавил меня сюда, может это изменить.',
     'Pick users': 'Выбрать пользователей',
     'Remove group data': 'Удалить данные группы',
+    'Remove myself': 'Удалить себя',
     'Reset stats': 'Сбросить статистику',
     'SCUMBAG': 'ЧМОМ',
     'Settings for {title}': 'Настройки для {title}',

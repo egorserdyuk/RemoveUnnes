@@ -1,0 +1,14 @@
+{
+  "0": "db.py",
+  "1": "handlers_private.py",
+  "3": "config.py",
+  "5": "set_lang",
+  "6": "handlers_group.py",
+  "7": "test_private.py",
+  "9": "classify",
+  "10": "test_group.py",
+  "11": "texts.py",
+  "23": "FakeConn",
+  "24": "db",
+  "25": "Group config share via base64 line — short design (2026-10-30)"
+}

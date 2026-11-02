@@ -1,26 +1,33 @@
-# Graph Report - RemoveUnnes  (2026-10-15)
+# Graph Report - RemoveUnnes  (2026-11-02)
 
 ## Corpus Check
-- Corpus is ~10,116 words - fits in a single context window. You may not need a graph.
+- 38 files · ~20,971 words
+- Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 5 file(s) not represented in the graph (top: (none) 3, .example 1, .ini 1)
 
 ## Summary
-- 303 nodes · 695 edges · 23 communities (15 shown, 8 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 50 edges (avg confidence: 0.9)
+- 550 nodes · 1418 edges · 26 communities (18 shown, 8 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 103 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
+## Graph Freshness
+- Built from commit: `4e464ec4`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
+
 ## Community Hubs (Navigation)
-- PostgreSQL membership store
-- Private chat handler UI
+- db.py
+- handlers_private.py
 - Design specification and plan
-- Entrypoint and configuration
+- config.py
 - Persistence schema and docker
-- Group moderation and notices
-- Whitelist picker flow
-- Internationalization and catalogs
+- set_lang
+- handlers_group.py
+- test_private.py
 - Keyboard builders
-- Content classification
-- Group message handling
-- User-facing text constants
+- classify
+- test_group.py
+- texts.py
 - Whitelist request picker
 - Babel translation catalogs
 - Private start flow
@@ -31,30 +38,33 @@
 - Graphify knowledge graph
 - Bot setup workflow
 - Test async runtime
+- FakeConn
+- db
+- Group config share via base64 line — short design (2026-10-30)
 
 ## God Nodes (most connected - your core abstractions)
-1. `activate_owner_lang()` - 20 edges
-2. `_handle()` - 16 edges
-3. `_deny()` - 15 edges
-4. `on_group_selected()` - 15 edges
-5. `on_my_chat_member()` - 14 edges
-6. `_start_screen()` - 14 edges
-7. `on_stats()` - 14 edges
-8. `set_lang()` - 14 edges
-9. `get_owner_lang()` - 12 edges
-10. `on_toggle()` - 12 edges
+1. `activate_owner_lang()` - 27 edges
+2. `handle_group_message()` - 25 edges
+3. `GMsg` - 24 edges
+4. `route_private()` - 23 edges
+5. `route_cb()` - 23 edges
+6. `make_app()` - 23 edges
+7. `set_lang()` - 22 edges
+8. `make_app()` - 22 edges
+9. `make_msg()` - 21 edges
+10. `sender()` - 21 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `RemoveUnnes Telegram Media Remover Bot` --semantically_similar_to--> `Telegram Media Remover Bot design`  [INFERRED] [semantically similar]
-  README.md → docs/superpowers/specs/2026-10-13-telegram-cleaner-design.md
-- `BotFather group privacy off` --semantically_similar_to--> `Group privacy requirement`  [INFERRED] [semantically similar]
-  README.md → docs/superpowers/specs/2026-10-13-telegram-cleaner-design.md
-- `Admin delete rights requirement` --semantically_similar_to--> `Delete rights requirement`  [INFERRED] [semantically similar]
-  README.md → docs/superpowers/specs/2026-10-13-telegram-cleaner-design.md
-- `test_load_api_base_optional()` --calls--> `load()`  [EXTRACTED]
-  tests/test_config.py → config.py
-- `test_should_delete_anonymous_by_type()` --calls--> `should_delete()`  [EXTRACTED]
-  tests/test_db.py → db.py
+- `Constraints` --references--> `activate_owner_lang()`  [INFERRED]
+  docs/superpowers/specs/2026-10-30-group-config-share-design.md → i18n.py
+- `Constraints` --references--> `message_fields()`  [INFERRED]
+  docs/superpowers/specs/2026-10-30-timing-rate-limits-design.md → adapters.py
+- `Left to builder` --references--> `get_notify()`  [INFERRED]
+  docs/superpowers/specs/2026-10-30-timing-rate-limits-design.md → db.py
+- `Goals` --references--> `incr_stat()`  [INFERRED]
+  docs/superpowers/specs/2026-10-30-timing-rate-limits-design.md → db.py
+- `Task 5: Wiring + full verification` --references--> `reset_group_data()`  [INFERRED]
+  docs/superpowers/plans/2026-10-30-timing-rate-limits.md → db.py
 
 ## Import Cycles
 - None detected.
@@ -64,55 +74,55 @@
 - **Content-type moderation pipeline** — plan_classify_function, plan_db_should_delete, plan_group_router, plan_db_format_stats, spec_service_messages_exempt [INFERRED 0.90]
 - **Owner-controlled group configuration** — plan_private_router, plan_keyboards, plan_callback_protocol, spec_owner_only_control, spec_flows_group_config_screen [INFERRED 0.90]
 
-## Communities (23 total, 8 thin omitted)
+## Communities (26 total, 8 thin omitted)
 
-### Community 0 - "PostgreSQL membership store"
-Cohesion: 0.12
-Nodes (24): add_pending_greeting(), add_whitelist(), delete_pending_greeting(), get_owner_lang(), get_stats(), init_pool(), init_schema(), list_pending_greetings() (+16 more)
+### Community 0 - "db.py"
+Cohesion: 0.08
+Nodes (41): main(), add_pending_greeting(), clear_limit(), delete_pending_greeting(), get_limit(), get_limits(), get_stats(), init_pool() (+33 more)
 
-### Community 1 - "Private chat handler UI"
-Cohesion: 0.18
-Nodes (27): get_blocked(), get_notify(), toggle_blocked(), whitelist_count(), _deny(), _group_title(), on_back_groups(), on_group_selected() (+19 more)
+### Community 1 - "handlers_private.py"
+Cohesion: 0.14
+Nodes (41): add_whitelist(), get_whitelist(), remove_whitelist(), _deny(), _group_title(), _limit_detail_text(), on_back_groups(), on_group_selected() (+33 more)
 
 ### Community 2 - "Design specification and plan"
 Cohesion: 0.07
 Nodes (20): Implementation plan, Telegram Media Remover Bot design, bot.py entrypoint, Callback data protocol, classify(message), classify module, CONTENT_TYPES priority list, reset_group_data helper (+12 more)
 
-### Community 3 - "Entrypoint and configuration"
-Cohesion: 0.11
-Nodes (12): main(), load(), Settings, format_stats(), should_delete(), test_load_api_base_optional(), test_load_missing_env_raises(), test_format_stats_order_and_empty() (+4 more)
+### Community 3 - "config.py"
+Cohesion: 0.25
+Nodes (7): load(), Settings, test_load_api_base_optional(), test_load_missing_env_raises(), make_app(), test_main_awaits_run_and_registers_handlers(), test_main_without_custom_api_base()
 
 ### Community 4 - "Persistence schema and docker"
 Cohesion: 0.09
 Nodes (19): docker-compose PostgreSQL db service, pgdata volume, config.Settings and load, init_pool(dsn), init_schema(pool), db module, register_group and ownership transfer, flush_pending helper (+11 more)
 
-### Community 5 - "Group moderation and notices"
-Cohesion: 0.14
-Nodes (12): get_owner(), incr_stat(), is_whitelisted(), _handle(), _notify_no_rights(), _now(), format_mention(), render_notice() (+4 more)
+### Community 5 - "set_lang"
+Cohesion: 0.06
+Nodes (39): format_stats(), should_delete(), detect_language(), get_lang(), n(), _ru_plural_index(), set_lang(), format_mention() (+31 more)
 
-### Community 6 - "Whitelist picker flow"
-Cohesion: 0.16
-Nodes (15): get_whitelist(), remove_whitelist(), _next_request_id(), on_back_group(), on_pick_users(), on_unwhite(), on_users_shared(), on_white_list() (+7 more)
+### Community 6 - "handlers_group.py"
+Cohesion: 0.06
+Nodes (43): get_blocked(), get_notify(), get_owner(), get_owner_lang(), incr_stat(), is_whitelisted(), Global Constraints, Review Focus (+35 more)
 
-### Community 7 - "Internationalization and catalogs"
-Cohesion: 0.13
-Nodes (11): detect_language(), get_lang(), msgid(), msgid_plural(), set_lang(), teardown_function(), test_detect_language(), test_english_returns_msgid() (+3 more)
+### Community 7 - "test_private.py"
+Cohesion: 0.15
+Nodes (30): on_language(), on_start(), route_private(), _clean_pending_limits(), GCb, GMsg, make_app(), make_msg() (+22 more)
 
 ### Community 8 - "Keyboard builders"
-Cohesion: 0.21
-Nodes (12): n(), back_to_group_kb(), group_menu_kb(), groups_kb(), picker_kb(), types_kb(), whitelist_kb(), test_group_menu_counts() (+4 more)
+Cohesion: 0.19
+Nodes (24): back_to_group_kb(), _btn(), confirm_reset_kb(), group_menu_kb(), groups_kb(), _inline(), limits_list_kb(), picker_kb() (+16 more)
 
-### Community 9 - "Content classification"
-Cohesion: 0.26
-Nodes (10): classify(), is_command_exempt(), _is_service(), photo_msg(), test_anonymous_channel_photo_classifies(), test_captioned_photo_counts_as_photo(), test_command_exempt_when_text_blocked(), test_non_command_text_not_exempt() (+2 more)
+### Community 9 - "classify"
+Cohesion: 0.10
+Nodes (20): _get(), is_start_command(), message_fields(), shared_users(), classify(), is_command_exempt(), _is_service(), FakeMsg (+12 more)
 
-### Community 10 - "Group message handling"
-Cohesion: 0.40
-Nodes (10): handle_edited_message(), handle_group_message(), make_bot(), make_msg(), test_allowed_type_passes(), test_blocked_photo_deleted_and_counted(), test_edited_message_rechecked(), test_no_rights_dms_owner_once() (+2 more)
+### Community 10 - "test_group.py"
+Cohesion: 0.15
+Nodes (35): handle_group_message(), GMsg, _base_patches(), _cross_type_patches(), _notify_on_patches(), _stack(), _stack_notify(), test_cooldown_buckets_are_per_user() (+27 more)
 
-### Community 11 - "User-facing text constants"
-Cohesion: 0.21
-Nodes (10): _lang_toggle(), on_start(), _start_screen(), GROUPS_EMPTY(), LANG_BUTTON_EN(), LANG_BUTTON_RU(), MY_GROUPS(), NEED_ADMIN() (+2 more)
+### Community 11 - "texts.py"
+Cohesion: 0.10
+Nodes (28): Task 4: Private-chat Limits UI + copy, _consume_pending_limit(), _lang_toggle(), _start_screen(), GCb, GMsg, make_app(), make_shared() (+20 more)
 
 ### Community 12 - "Whitelist request picker"
 Cohesion: 1.00
@@ -126,25 +136,37 @@ Nodes (3): Babel message catalogs, Compiled .mo files, Babel dependency
 Cohesion: 0.67
 Nodes (3): Private group config screen, Private start and group list flow, Design goals
 
+### Community 23 - "FakeConn"
+Cohesion: 0.14
+Nodes (3): _FakeAcquire, FakeConn, _FakeTransaction
+
+### Community 24 - "db"
+Cohesion: 0.15
+Nodes (12): environment, image, ports, restart, volumes, POSTGRES_DB, POSTGRES_PASSWORD, POSTGRES_USER (+4 more)
+
+### Community 25 - "Group config share via base64 line — short design (2026-10-30)"
+Cohesion: 0.20
+Nodes (9): Anti-goals, Approaches, Constraints, Goals, Group config share via base64 line — short design (2026-10-30), How (approach A, decided parts), Intent / why, Left to builder (+1 more)
+
 ## Knowledge Gaps
-- **27 isolated node(s):** `graphify knowledge graph`, `Bot setup workflow`, `Integration test marker`, `Compiled .mo files`, `docker-compose PostgreSQL db service` (+22 more)
-  These have ≤1 connection - possible missing edges. (Counts symbols only; 81 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **27 isolated node(s):** `Compiled .mo files`, `Babel dependency`, `Private group config screen`, `Private start and group list flow`, `Plan architecture` (+22 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 150 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **8 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `set_lang()` connect `Internationalization and catalogs` to `PostgreSQL membership store`, `Private chat handler UI`, `User-facing text constants`, `Group moderation and notices`?**
-  _High betweenness centrality (0.028) - this node is a cross-community bridge._
-- **What connects `graphify knowledge graph`, `Bot setup workflow`, `Integration test marker` to the rest of the system?**
+- **Why does `set_lang()` connect `set_lang` to `db.py`, `handlers_private.py`, `handlers_group.py`, `test_private.py`, `texts.py`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Are the 5 inferred relationships involving `route_private()` (e.g. with `Task 4: Private-chat Limits UI + copy` and `Task 5: Wiring + full verification`) actually correct?**
+  _`route_private()` has 5 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `Compiled .mo files`, `Babel dependency`, `Private group config screen` to the rest of the system?**
   _27 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `PostgreSQL membership store` be split into smaller, more focused modules?**
-  _Cohesion score 0.12222222222222222 - nodes in this community are weakly interconnected._
-- **Why does `classify()` connect `Content classification` to `Group moderation and notices`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Should `Design specification and plan` be split into smaller, more focused modules?**
-  _Cohesion score 0.07126436781609195 - nodes in this community are weakly interconnected._
-- **Why does `activate_owner_lang()` connect `Private chat handler UI` to `PostgreSQL membership store`, `Whitelist picker flow`, `Internationalization and catalogs`?**
-  _High betweenness centrality (0.023) - this node is a cross-community bridge._
-- **Should `Entrypoint and configuration` be split into smaller, more focused modules?**
-  _Cohesion score 0.11384615384615385 - nodes in this community are weakly interconnected._
+- **Should `db.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.07667900581702802 - nodes in this community are weakly interconnected._
+- **Why does `route_private()` connect `test_private.py` to `handlers_private.py`, `handlers_group.py`, `classify`, `texts.py`, `Group config share via base64 line — short design (2026-10-30)`?**
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
+- **Should `handlers_private.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.13725490196078433 - nodes in this community are weakly interconnected._
+- **Why does `get_limit()` connect `db.py` to `handlers_private.py`, `texts.py`, `handlers_group.py`?**
+  _High betweenness centrality (0.031) - this node is a cross-community bridge._

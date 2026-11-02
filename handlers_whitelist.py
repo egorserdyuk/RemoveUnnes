@@ -23,6 +23,11 @@ def _tg_user(msg) -> SimpleNamespace:
     return SimpleNamespace(id=msg.from_id, language_code=getattr(msg, "language_code", None))
 
 
+def _sender(cb) -> dict:
+    sender = getattr(cb, "from_user", None)
+    return sender if isinstance(sender, dict) else {}
+
+
 async def _owner_only(pool, chat_id: int, user_id: int) -> bool:
     return await get_owner(pool, chat_id) == user_id
 
@@ -37,7 +42,30 @@ async def on_white_list(pool, app, cb) -> None:
         cb.chat_id,
         cb.msg_id,
         _("Whitelisted users (bypass all blocks):"),
-        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id)),
+        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id), cb.from_id),
+    )
+    await cb.answer()
+
+
+async def on_add_self(pool, app, cb) -> None:
+    await activate_owner_lang(pool, _tg_user(cb))
+    chat_id = int(cb.data.split(":", 1)[1])
+    if not await _owner_only(pool, chat_id, cb.from_id):
+        await _deny(app, cb)
+        return
+    sender = _sender(cb)
+    first = sender.get("first_name") or ""
+    last = sender.get("last_name") or ""
+    await add_whitelist(
+        pool,
+        chat_id,
+        [(cb.from_id, sender.get("username"), f"{first} {last}".strip() or None)],
+    )
+    await app.edit_msg(
+        cb.chat_id,
+        cb.msg_id,
+        _("Whitelisted users (bypass all blocks):"),
+        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id), cb.from_id),
     )
     await cb.answer()
 
@@ -96,7 +124,7 @@ async def on_unwhite(pool, app, cb) -> None:
         cb.chat_id,
         cb.msg_id,
         _("Whitelisted users (bypass all blocks):"),
-        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id)),
+        kbd=whitelist_kb(chat_id, await get_whitelist(pool, chat_id), cb.from_id),
     )
     await cb.answer()
 

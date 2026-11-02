@@ -375,7 +375,7 @@ async def route_private(pool, app, msg) -> None:
 
 async def route_cb(pool, app, cb) -> None:
     """Route a callback query by data prefix."""
-    from handlers_whitelist import on_pick_users, on_unwhite, on_white_list
+    from handlers_whitelist import on_add_self, on_pick_users, on_unwhite, on_white_list
 
     data = cb.data or ""
     if data.startswith("group:"):
@@ -386,6 +386,8 @@ async def route_cb(pool, app, cb) -> None:
         await on_toggle(pool, app, cb)
     elif data.startswith("white:"):
         await on_white_list(pool, app, cb)
+    elif data.startswith("addself:"):
+        await on_add_self(pool, app, cb)
     elif data.startswith("pick_users:"):
         await on_pick_users(pool, app, cb)
     elif data.startswith("unwhite:"):

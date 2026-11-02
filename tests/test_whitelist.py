@@ -19,11 +19,12 @@ class GMsg:
 
 
 class GCb:
-    def __init__(self, data, user_id, chat_id=999, msg_id=10):
+    def __init__(self, data, user_id, chat_id=999, msg_id=10, from_user=None):
         self.data = data
         self.from_id = user_id
         self.chat_id = chat_id
         self.msg_id = msg_id
+        self.from_user = from_user or {}
         self.answer = AsyncMock()
 
 
@@ -107,3 +108,43 @@ async def test_white_list_renders_removes():
     kb = app.edit_msg.call_args[1]["kbd"]
     datas = [b["callback_data"] for row in kb["inline_keyboard"] for b in row]
     assert "unwhite:-1001:7" in datas
+    assert "addself:-1001" in datas
+
+
+async def test_add_self_adds_owner_with_profile():
+    from handlers_whitelist import on_add_self
+
+    cb = GCb(
+        "addself:-1001",
+        111,
+        from_user={"username": "boss", "first_name": "Big", "last_name": "Boss"},
+    )
+    app, pool = make_app(), object()
+    with (
+        patch("handlers_whitelist.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
+        patch("handlers_whitelist.add_whitelist", AsyncMock()) as aw,
+        patch(
+            "handlers_whitelist.get_whitelist",
+            AsyncMock(return_value=[(111, "boss")]),
+        ),
+    ):
+        await on_add_self(pool, app, cb)
+    assert aw.call_args[0][2] == [(111, "boss", "Big Boss")]
+    kb = app.edit_msg.call_args[1]["kbd"]
+    datas = [b["callback_data"] for row in kb["inline_keyboard"] for b in row]
+    assert "unwhite:-1001:111" in datas
+
+
+async def test_add_self_requires_owner():
+    from handlers_whitelist import on_add_self
+
+    cb, app, pool = GCb("addself:-1001", 555), make_app(), object()
+    with (
+        patch("handlers_whitelist.get_owner", AsyncMock(return_value=111)),
+        patch("db.get_owner_lang", AsyncMock(return_value="en")),
+        patch("handlers_whitelist.add_whitelist") as aw,
+    ):
+        await on_add_self(pool, app, cb)
+    aw.assert_not_called()
+    cb.answer.assert_called_once_with(texts.NOT_OWNER(), alert=True)

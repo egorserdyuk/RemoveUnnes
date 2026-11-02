@@ -2,7 +2,8 @@
 
 Callback prefixes (exact):
   group:{chat_id}  types:{chat_id}  toggle:{chat_id}:{ctype}
-  white:{chat_id}  pick_users:{chat_id}  unwhite:{chat_id}:{user_id}
+  white:{chat_id}  addself:{chat_id}  pick_users:{chat_id}
+  unwhite:{chat_id}:{user_id}
   notify:{chat_id}  stats:{chat_id}  lang:{en,ru}
   reset_stats:{chat_id}  reset_group:{chat_id}  reset_group:{chat_id}:confirm
   limits:{chat_id}  lim:{chat_id}:{ctype}
@@ -67,11 +68,18 @@ def types_kb(chat_id: int, blocked: set[str]) -> dict:
     return {"inline_keyboard": rows}
 
 
-def whitelist_kb(chat_id: int, users: list[tuple[int, str | None]]) -> dict:
+def whitelist_kb(
+    chat_id: int, users: list[tuple[int, str | None]], self_id: int | None = None
+) -> dict:
     rows = []
     for user_id, username in users:
         label = f"@{username}" if username else str(user_id)
         rows.append([_btn(f"✖ {label}", f"unwhite:{chat_id}:{user_id}")])
+    if self_id is not None:
+        if any(user_id == self_id for user_id, _username in users):
+            rows.append([_btn(_("Remove myself"), f"unwhite:{chat_id}:{self_id}")])
+        else:
+            rows.append([_btn(_("Add myself"), f"addself:{chat_id}")])
     rows.append([_btn(_("+ Add via picker"), f"pick_users:{chat_id}")])
     rows.append([_btn(_("« Back"), f"group:{chat_id}")])
     return {"inline_keyboard": rows}
