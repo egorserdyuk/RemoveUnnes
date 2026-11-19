@@ -191,7 +191,7 @@ async def test_duration_fail_notice_uses_duration_reason():
         await handle_group_message(
             pool, app, GMsg(make_msg(**{"from": sender(), "voice": {"file_id": "v", "duration": 65}})), 777
         )
-    ru.assert_called_once_with("@bob", "voice", [], reason="duration")
+    ru.assert_called_once_with("@bob", "voice", [], reason="duration", remaining_sec=None)
 
 
 async def test_cooldown_fail_notice_uses_cooldown_reason():
@@ -207,4 +207,29 @@ async def test_cooldown_fail_notice_uses_cooldown_reason():
     ):
         await handle_group_message(pool, app, GMsg(make_msg(**{"from": sender(), "text": "hi"})), 777)
         await handle_group_message(pool, app, GMsg(make_msg(**{"from": sender(), "text": "again"})), 777)
-    ru.assert_called_once_with("@bob", "text", [], reason="cooldown")
+    ru.assert_called_once_with("@bob", "text", [], reason="cooldown", remaining_sec=30)
+
+
+async def test_cooldown_fail_passes_remaining_to_notice():
+    from datetime import timedelta
+    from unittest.mock import AsyncMock, patch
+    from handlers_group import handle_group_message
+    from test_group import GMsg, make_app, make_msg, sender
+    now = datetime.now(timezone.utc)
+    store = {(-1001, 111, "text"): now - timedelta(seconds=10)}
+    patches = dict(
+        get_blocked=AsyncMock(return_value=set()),
+        is_whitelisted=AsyncMock(return_value=False),
+        incr_stat=AsyncMock(),
+        get_notify=AsyncMock(return_value=True),
+        get_owner=AsyncMock(return_value=111),
+        get_owner_lang=AsyncMock(return_value="en"),
+        get_limit=AsyncMock(return_value=(None, 30)),
+    )
+    from contextlib import ExitStack
+    stack = ExitStack()
+    for name in ("get_blocked", "is_whitelisted", "incr_stat", "get_notify", "get_owner", "get_owner_lang", "get_limit"):
+        stack.enter_context(patch(f"handlers_group.{name}", patches[name]))
+    with stack, patch("handlers_group._cooldown_last", store), patch("handlers_group._recent_notice_texts", {}), patch("handlers_group.render_unique_notice", return_value="N") as ru, patch("handlers_group._now", return_value=now):
+        await handle_group_message(pool := object(), app := make_app(), GMsg(make_msg(**{"from": sender(), "text": "again"})), 777)
+    ru.assert_called_once_with("@bob", "text", [], reason="cooldown", remaining_sec=20)

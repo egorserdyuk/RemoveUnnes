@@ -17,7 +17,7 @@ from db import (
     is_whitelisted,
 )
 from i18n import set_lang
-from limits import get_duration, is_cooldown_ok, is_duration_ok
+from limits import get_duration, is_cooldown_ok, is_duration_ok, remaining_cooldown_sec
 from notices import format_mention, render_unique_notice
 
 NOTIFY_WINDOW = timedelta(minutes=10)
@@ -53,7 +53,7 @@ async def _notify_no_rights(pool, app, chat_id: int, title: str) -> None:
         pass
 
 
-async def _remove(pool, app, msg, fields, chat_id: int, ctype: str, reason: str) -> None:
+async def _remove(pool, app, msg, fields, chat_id: int, ctype: str, reason: str, remaining_sec: int | None = None) -> None:
     """Delete an offending message, count it, optionally notify the owner."""
     try:
         await app.delete_msg(chat_id, msg.msg_id)
@@ -65,7 +65,7 @@ async def _remove(pool, app, msg, fields, chat_id: int, ctype: str, reason: str)
         owner = await get_owner(pool, chat_id)
         lang = await get_owner_lang(pool, owner) if owner is not None else None
         set_lang(lang or "en")
-        await _send_notice(pool, app, chat_id, format_mention(fields.from_user), ctype, reason)
+        await _send_notice(pool, app, chat_id, format_mention(fields.from_user), ctype, reason, remaining_sec)
 
 
 async def _handle(pool, app, msg, bot_id: int) -> None:
@@ -97,16 +97,17 @@ async def _handle(pool, app, msg, bot_id: int) -> None:
     now = _now()
     key = (chat_id, sender_id, ctype)
     if not is_cooldown_ok(now, _cooldown_last.get(key), cool):
-        await _remove(pool, app, msg, fields, chat_id, ctype, "cooldown")
+        remaining = remaining_cooldown_sec(now, _cooldown_last.get(key), cool)
+        await _remove(pool, app, msg, fields, chat_id, ctype, "cooldown", remaining)
         return
     if cool is not None and sender_id is not None:
         _cooldown_last[key] = now
 
 
-async def _send_notice(pool, app, chat_id: int, user: str, ctype: str, reason: str) -> None:
+async def _send_notice(pool, app, chat_id: int, user: str, ctype: str, reason: str, remaining_sec: int | None = None) -> None:
     """Post a notice whose text doesn't repeat the previous bot replies."""
     previous = _recent_notice_texts.get(chat_id, [])
-    text = render_unique_notice(user, ctype, previous, reason=reason)
+    text = render_unique_notice(user, ctype, previous, reason=reason, remaining_sec=remaining_sec)
     try:
         await app.send_msg(chat_id, text)
     except (ForbiddenError, BadRequestError):
