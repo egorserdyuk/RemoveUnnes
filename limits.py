@@ -8,6 +8,7 @@ in handlers_group (approach B); this module stays pure.
 
 import re
 from datetime import datetime
+from math import ceil
 
 DURATION_TYPES: set[str] = {"voice", "video", "video_note", "audio", "animation"}
 
@@ -78,3 +79,15 @@ def is_cooldown_ok(now: datetime, last: datetime | None, cooldown_sec: int | Non
     if cooldown_sec is None or last is None:
         return True
     return (now - last).total_seconds() >= cooldown_sec
+
+
+def remaining_cooldown_sec(
+    now: datetime, last: datetime | None, cooldown_sec: int | None
+) -> int | None:
+    """Seconds left in the cooldown window (ceil, min 1); None if no wait."""
+    if cooldown_sec is None or last is None:
+        return None
+    remaining = cooldown_sec - (now - last).total_seconds()
+    if remaining <= 0:
+        return None
+    return max(1, ceil(remaining))

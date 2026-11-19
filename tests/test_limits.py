@@ -75,3 +75,15 @@ def test_get_duration_object_kind():
         animation=None,
     )
     assert get_duration(fields) == 12
+
+
+def test_remaining_cooldown_sec():
+    from datetime import datetime, timedelta, timezone
+    from limits import remaining_cooldown_sec
+    now = datetime.now(timezone.utc)
+    assert remaining_cooldown_sec(now, None, 30) is None
+    assert remaining_cooldown_sec(now, now - timedelta(seconds=40), 30) is None
+    assert remaining_cooldown_sec(now, now - timedelta(seconds=30), 30) is None
+    assert remaining_cooldown_sec(now, now - timedelta(seconds=10), 30) == 20
+    assert remaining_cooldown_sec(now, now - timedelta(milliseconds=29900), 30) == 1
+    assert remaining_cooldown_sec(now, now, None) is None
