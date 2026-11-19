@@ -2,7 +2,7 @@
 
 import random
 
-from i18n import _, get_lang
+from i18n import _, get_lang, n
 
 INSULTS: list[str] = [
     "jerk",
@@ -209,7 +209,8 @@ def _scenario_ru_replies(reason: str | None, ctype: str) -> list[str]:
 
 
 def render_notice(
-    user: str, ctype: str, reason: str | None = None, rng=random.choice
+    user: str, ctype: str, reason: str | None = None, rng=random.choice,
+    remaining_sec: int | None = None,
 ) -> str:
     """Pick a random template + insult and fill in user and type label.
 
@@ -219,26 +220,36 @@ def render_notice(
     per-type replies are opt-in.
     """
     if get_lang() == "ru":
-        return rng(_scenario_ru_replies(reason, ctype)).format(user=user)
-    templates = _scenario_templates(reason, ctype)
-    return _(rng(templates)).format(
-        user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
-    )
+        base = rng(_scenario_ru_replies(reason, ctype)).format(user=user)
+    else:
+        templates = _scenario_templates(reason, ctype)
+        base = _(rng(templates)).format(
+            user=user, insult=_(rng(INSULTS)), type=_(CONTENT_LABELS[ctype])
+        )
+    if reason == "cooldown" and remaining_sec is not None:
+        suffix = n(
+            "Please wait another {n} second.",
+            "Please wait another {n} seconds.",
+            remaining_sec,
+        ).format(n=remaining_sec)
+        return f"{base} {suffix}"
+    return base
 
 
 def render_unique_notice(
-    user: str, ctype: str, previous: list[str], reason: str | None = None, rng=random.choice
+    user: str, ctype: str, previous: list[str], reason: str | None = None, rng=random.choice,
+    remaining_sec: int | None = None,
 ) -> str:
     """Render a notice that doesn't repeat any of the previous bot replies.
 
     Re-rolls the random pick while the text matches a recent one; after
     MAX_UNIQUE_ATTEMPTS draws the last one is sent as-is (never hangs).
     """
-    text = render_notice(user, ctype, reason=reason, rng=rng)
+    text = render_notice(user, ctype, reason=reason, rng=rng, remaining_sec=remaining_sec)
     for _ in range(MAX_UNIQUE_ATTEMPTS - 1):
         if text not in previous:
             return text
-        text = render_notice(user, ctype, reason=reason, rng=rng)
+        text = render_notice(user, ctype, reason=reason, rng=rng, remaining_sec=remaining_sec)
     return text
 
 

@@ -107,6 +107,7 @@ RU_STRINGS: dict[str, str] = {
 
 
 RU_PLURALS: dict[tuple[str, str], tuple[str, str, str]] = {
+    ('Please wait another {n} second.', 'Please wait another {n} seconds.'): ('Подождите ещё {n} секунду.', 'Подождите ещё {n} секунды.', 'Подождите ещё {n} секунд.'),
     ('Added {n} user to the whitelist.', 'Added {n} users to the whitelist.'): ('Добавлен {n} пользователь в белый список.', 'Добавлено {n} пользователя в белый список.', 'Добавлено {n} пользователей в белый список.'),
     ('Whitelist: {n} user', 'Whitelist: {n} users'): ('Белый список: {n} пользователь', 'Белый список: {n} пользователя', 'Белый список: {n} пользователей'),
     ('{n} GIF', '{n} GIFs'): ('{n} GIF', '{n} GIF', '{n} GIF'),

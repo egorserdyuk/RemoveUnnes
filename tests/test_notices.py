@@ -172,3 +172,46 @@ def test_blocked_other_type_ru_uses_generic_pool():
         assert text == notices.RUSSIAN_REPLIES[0].format(user="@bob")
     finally:
         set_lang("en")
+
+
+def test_cooldown_suffix_en_singular_plural():
+    from i18n import set_lang
+    from notices import render_notice
+    set_lang("en")
+    try:
+        one = render_notice("@bob", "text", reason="cooldown", rng=lambda s: s[0], remaining_sec=1)
+        assert one.endswith("Please wait another 1 second.")
+        ten = render_notice("@bob", "text", reason="cooldown", rng=lambda s: s[0], remaining_sec=10)
+        assert ten.endswith("Please wait another 10 seconds.")
+    finally:
+        set_lang("en")
+
+
+def test_cooldown_suffix_ru_plural_forms():
+    from i18n import set_lang
+    from notices import render_notice
+    set_lang("ru")
+    try:
+        assert render_notice("@bob", "text", reason="cooldown", rng=lambda s: s[0], remaining_sec=1).endswith("Подождите ещё 1 секунду.")
+        assert render_notice("@bob", "text", reason="cooldown", rng=lambda s: s[0], remaining_sec=3).endswith("Подождите ещё 3 секунды.")
+        assert render_notice("@bob", "text", reason="cooldown", rng=lambda s: s[0], remaining_sec=5).endswith("Подождите ещё 5 секунд.")
+    finally:
+        set_lang("en")
+
+
+def test_no_suffix_without_remaining_or_non_cooldown():
+    from notices import render_notice
+    base_cool = render_notice("@bob", "text", reason="cooldown", rng=lambda s: s[0])
+    assert "Please wait another" not in base_cool
+    base_blocked = render_notice("@bob", "text", reason="blocked", rng=lambda s: s[0], remaining_sec=10)
+    assert "Please wait another" not in base_blocked and "Подождите" not in base_blocked
+
+
+def test_unique_notice_keeps_suffix_and_dedups_on_full_text():
+    from notices import NOTICE_TEMPLATES, render_unique_notice
+    rng_calls = iter([NOTICE_TEMPLATES[0], "jerk", NOTICE_TEMPLATES[0], "jerk", NOTICE_TEMPLATES[1], "jerk"])
+    dupe_base = NOTICE_TEMPLATES[0].format(user="@bob", insult="jerk", type="text message")
+    dupe = f"{dupe_base} Please wait another 20 seconds."
+    fresh_base = NOTICE_TEMPLATES[1].format(user="@bob", insult="jerk", type="text message")
+    fresh = f"{fresh_base} Please wait another 20 seconds."
+    assert render_unique_notice("@bob", "text", [dupe], reason="cooldown", rng=lambda s: next(rng_calls), remaining_sec=20) == fresh
